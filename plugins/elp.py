@@ -39,7 +39,7 @@ async def elp_cb(client: Bot, query: CallbackQuery):
         await asyncio.sleep(0.1)
         await h.delete()
         await stik.delete()
-        await query.message.reply_text("🌀Cremdits @Romlex69")
+        await query.message.reply_text("🌀Enjoy")
         await query.message.reply_photo(photo = ELP_PIC,
             caption = """🌀CHOOSE THE BATCH: """,
             reply_markup=InlineKeyboardMarkup(
