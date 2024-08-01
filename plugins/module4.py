@@ -31,7 +31,7 @@ async def nots_cb(client: Bot, query: CallbackQuery):
                     [
                         InlineKeyboardButton("PHY CHEM", url= "https://t.me/Voltaic_Robot?start=Z2V0LTIxMDY3NzE4NzQxNTI4MjQ"),
                         InlineKeyboardButton("OC", url= "https://t.me/Voltaic_Robot?start=Z2V0LTIxMDU3NzA1NTY3MjIxNDM"),
-                        InlineKeyboardButton("IOC", callback_data= "ioc4"),
+                        InlineKeyboardButton("IOC", url= "https://t.me/Voltaic_Robot?start=Z2V0LTIyNjE5NzYwNzU5MDgzNzktMjI2NTk4MTM0NTYzMTEwMw"),
                    ],
                    [
                         InlineKeyboardButton("Back", callback_data= "help_mod"),
