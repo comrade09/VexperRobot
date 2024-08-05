@@ -14,7 +14,7 @@ async def six(client: Bot, query: CallbackQuery):
     data = query.data
     if data == "help_six":
         await query.message.edit_text(
-            text = f''' select your educator ''',
+            text = f''' Select your educator ''',
             disable_web_page_preview = True,
             reply_markup = InlineKeyboardMarkup(
                 [
