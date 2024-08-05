@@ -37,13 +37,14 @@ async def six(client: Bot, query: CallbackQuery):
                    [
                        InlineKeyboardButton("Back", callback_data= "help_cb"),
                    ],
-                ]
+                ]  
             )
         )
     elif data == "super_skc":
      await query.message.edit_text(
      text = f''' 🌱 Welcome  
 🔮 Notes  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTY5NzkxODI0OTE4NDY1Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮 Module Discussions  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyOTkwMjQ4MjA4NDM1NzY">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
    
      ''',
      disable_web_page_preview = True,
@@ -80,13 +81,14 @@ async def six(client: Bot, query: CallbackQuery):
 
 🔮Notes  :- hit /notes in this bot
 
-🔮Jstar Points <a href="https://t.me/LinkLockerNet/650">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Jstar Points <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzI5OTA1Njc2NDU4NzAtMjI4NzAwOTAxMTY3NTQwNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮Dpp/Modules  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTU3Njc1ODg0MDA3MjI1Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ  </a>
 
 🔮 PYQ  <a href="https://t.me/LinkLockerNet/122">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮 Module Disscusion  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTczNTk2ODMxMTU1MDUzNQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Module Disscusion Class 11th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyOTEwMTQyODEzOTgxMjgtMjI5NTAxOTU1MTEyMDg1Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Module Disscusion Class 12th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyOTYwMjA4Njg1NTE1MzMtMjI5ODAyMzUwMzQxMjg5NQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮 Merged Modules 
 
@@ -110,7 +112,7 @@ async def six(client: Bot, query: CallbackQuery):
      text = f'''  🌱 Welcome 
 🔮Notes  :- hit /notes in this bot
 🔮Modules <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIwODU3NDQyMDgxMDg1MjM">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮Expected Question  <a href="https://t.me/LinkLockerNet/228">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Expected Question  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzE5ODkyNTAyMTUxODk">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 
 
@@ -126,7 +128,11 @@ async def six(client: Bot, query: CallbackQuery):
 ),
     elif data == "super_rs":
      await query.message.edit_text(
-     text = '''   hi   ''',
+     text = ''' 🔮 Handwritten Notes <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzMDAwMjYxMzgyNzQyNTc">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮 Modules Class 11th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzMDQwMzE0MDc5OTY5ODE">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮 Modules Class 12th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzMDUwMzI3MjU0Mjc2NjI">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+     
+     ''',
      disable_web_page_preview = True,
           reply_markup = InlineKeyboardMarkup(
                 [
@@ -161,7 +167,7 @@ async def six(client: Bot, query: CallbackQuery):
 📡 Class 11 <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTY5ODkxOTU2NjYxNTMzOA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
 📡 Class 12 <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTY5OTkyMDg4NDA0NjAxOQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ   </a>
 
-🔮Neet PYQ/Jee PYQ  Visit @Ath_server
+🔮Physicaholics Points <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzMDEwMjc0NTU3MDQ5Mzg">   ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>   
 
 🔮Physicaholics Bot <a href="https://t.me/physicsaholicsbot">   ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>   ''',
      disable_web_page_preview = True,
@@ -181,7 +187,21 @@ async def six(client: Bot, query: CallbackQuery):
                 ]
             )
 )
- 
+    elif data == "super_ysy":
+     await query.message.edit_text(
+     text = ''' 🔮Handouts : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮GOC 2 NOTES : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+     ''',
+     disable_web_page_preview = True,
+          reply_markup = InlineKeyboardMarkup(
+                [
+                   [
+                       InlineKeyboardButton("Back", callback_data= "help_six"),
+                   ],
+                ]
+            )
+        
+)         
 
     
  
