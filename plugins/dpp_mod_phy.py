@@ -64,27 +64,25 @@ async def pcnots(client: Bot, query: CallbackQuery):
 
 🔮Newton Laws of motion <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEwNjQ0MDA0Mjg4MTM5MDMtMTA2OTQwNzAxNTk2NzMwOA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Work Energy and power <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTExMTg0NzE1NzAwNzA2NzctMTEyMzQ3ODE1NzIyNDA4Mg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Work Energy and power <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzNzAxMTgzNTg0MjE5MjctMjM3NTEyNDk0NTU3NTMzMg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Circular Motion <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEwNzA0MDgzMzMzOTc5ODktMTA3NTQxNDkyMDU1MTM5NA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Circular Motion <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzMjgwNjMwMjYzMzMzMjUtMjMzMzA2OTYxMzQ4NjczMA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮COM <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEwNzY0MTYyMzc5ODIwNzUtMTA4MTQyMjgyNTEzNTQ4MA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮COM <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzMjgwNjMwMjYzMzMzMjUtMjMzMzA2OTYxMzQ4NjczMA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Rotation <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEwODI0MjQxNDI1NjYxNjEtMTA4NzQzMDcyOTcxOTU2Ng"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Rotation <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzMzQwNzA5MzA5MTc0MTEtMjMzOTA3NzUxODA3MDgxNg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Gravitation <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTExMjQ0Nzk0NzQ2NTQ3NjMtMTEyOTQ4NjA2MTgwODE2OA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Gravitation <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzNzYxMjYyNjMwMDYwMTMtMjM4MTEzMjg1MDE1OTQxOA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Sound <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTExMDY0NTU3NjA5MDI1MDUtMTExMTQ2MjM0ODA1NTkxMA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Fluids <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEwODg0MzIwNDcxNTAyNDctMTA5MzQzODYzNDMwMzY1Mg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Fluids <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzNDAwNzg4MzU1MDE0OTctMjM0NTA4NTQyMjY1NDkwMg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
        
-🔮Thermo & Elasticity <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTExMTI0NjM2NjU0ODY1OTEtMTExNzQ3MDI1MjYzOTk5Ng"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Thermo & Elasticity <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzNzAxMTgzNTg0MjE5MjctMjM3NTEyNDk0NTU3NTMzMg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Ktg <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTExMzA0ODczNzkyMzg4NDktMTEzNTQ5Mzk2NjM5MjI1NA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Ktg <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzODgxNDIwNzIxNzQxODUtMjM5MzE0ODY1OTMyNzU5MA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Simple Harmonic Motion <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEwOTQ0Mzk5NTE3MzQzMzMtMTA5OTQ0NjUzODg4NzczOA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Simple Harmonic Motion <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzNDYwODY3NDAwODU1ODMtMjM1MTA5MzMyNzIzODk4OA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Waves <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTExMDA0NDc4NTYzMTg0MTktMTEwNTQ1NDQ0MzQ3MTgyNA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Waves <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzNTgxMDI1NDkyNTM3NTUtMjM2MzEwOTEzNjQwNzE2MA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 ''',
                       
             
@@ -163,19 +161,19 @@ async def zoo_nots(client: Bot, query: CallbackQuery):
 
 🔮COM <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEzMjQ3NDI5NjA3OTA5NjMtMTMzMTc1MjE4MjgwNTczMA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Rotation <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEzNTI3Nzk4NDg4NTAwMzEtMTM1ODc4Nzc1MzQzNDExNw"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Rotation <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzMTQwNDQ1ODIzMDM3OTEtMjMyMTA1MzgwNDMxODU1OA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Gravitation <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEzNjg4MDA5Mjc3NDA5MjctMTM3MzgwNzUxNDg5NDMzMg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Gravitation <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTIzMjIwNTUxMjE3NDkyMzktMjMyNzA2MTcwODkwMjY0NA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮Fluids <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEyOTg3MDg3MDc1OTMyNTctMTMwMzcxNTI5NDc0NjY2Mg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
        
-🔮Thermo part 1  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTEzMzM3NTQ4MTc2NjcwOTItMTM0Mjc2NjY3NDU0MzIyMQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Thermo part 1  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzOTQxNDk5NzY3NTgyNzEtMjQwMTE1OTE5ODc3MzAzOA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮Thermo part 2  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTEzNDM3Njc5OTE5NzM5MDItMTM1MDc3NzIxMzk4ODY2OQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮Elasticity <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEzMjE3MzkwMDg0OTg5MjAtMTMyMjc0MDMyNTkyOTYwMQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Simple Harmonic Motion <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEzNjE3OTE3MDU3MjYxNjAtMTM2Njc5ODI5Mjg3OTU2NQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Simple Harmonic Motion <a href= "https://t.me/Voltaic_Robot?start=Z2V0LTI0MDIxNjA1MTYyMDM3MTktMjQwNzE2NzEwMzM1NzEyNA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮Waves & Sound <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTEzMTE3MjU4MzQxOTIxMTAtMTMxOTczNjM3MzYzNzU1OA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>''',
             
