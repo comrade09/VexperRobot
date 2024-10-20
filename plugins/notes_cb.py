@@ -37,7 +37,7 @@ async def phynots(client: Bot, query: CallbackQuery):
 
 🔮Elasticity <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwNDA1Nzg5NjgzNjg0Mw"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮Fluids <a href= "https://t.me/Voltaic_Network/18"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Fluids <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTI0MjgxOTQ3Njk0MDE0MjU"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
        
 🔮Thermodynamics <a href= "https://t.me/Voltaic_Network/18"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
