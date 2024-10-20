@@ -85,7 +85,7 @@ async def six(client: Bot, query: CallbackQuery):
 
 🔮Dpp/Modules  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTU3Njc1ODg0MDA3MjI1Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ  </a>
 
-🔮 PYQ  <a href="https://t.me/LinkLockerNet/122">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 PYQ JSTAR SERIES LINKS <a href="https://t.me/Voltaic_Robot?start=Z2V0LTI0MjIxODY4NjQ4MTczMzk">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮 Module Disscusion Class 11th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyOTEwMTQyODEzOTgxMjgtMjI5NTAxOTU1MTEyMDg1Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 🔮 Module Disscusion Class 12th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyOTYwMjA4Njg1NTE1MzMtMjI5ODAyMzUwMzQxMjg5NQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
