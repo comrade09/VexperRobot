@@ -12,7 +12,7 @@ from pyrogram.types import CallbackQuery
 from pyrogram.enums import ParseMode
 
 
-ERROR_TEXT = "Invalid Command"
+ERROR_TEXT = "⚠️ Invalid Command press /start "
 
 @Bot.on_message(filters.command('stats') & filters.user(ADMINS))
 async def stats(bot: Bot, message: Message):
