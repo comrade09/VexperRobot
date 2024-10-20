@@ -178,6 +178,29 @@ async def zoo_nots(client: Bot, query: CallbackQuery):
                 ]
             )
         )
+@Bot.on_callback_query(group=254848)
+async def zoo_nots(client: Bot, query: CallbackQuery):
+    data = query.data
+    if data == "org_nots":
+        await query.message.edit_text(
+            text = f'''
+🔮YSY SIR Handouts : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮YSY SIR GOC 2 NOTES : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮SKC SIR  Notes  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTY5NzkxODI0OTE4NDY1Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮SKC SIR  GOC 1 NOTES <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI0MjUxOTA4MTcxMDkzODI">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮SKC SIR  GOC 2 NOTES <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI0MjYxOTIxMzQ1NDAwNjM">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+
+''',
+            disable_web_page_preview = True,
+            reply_markup = InlineKeyboardMarkup(
+                [
+                   [
+                       InlineKeyboardButton("Back", callback_data= "help_nots"),
+                   ],
+                ]
+            )
+        )
+
 @Bot.on_callback_query(group=2)
 async def bot_nots(client: Bot, query: CallbackQuery):
     data = query.data
