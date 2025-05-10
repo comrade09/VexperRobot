@@ -1,10 +1,6 @@
-#(©)CodeXBotz
-
-
-
-
 import os
 import asyncio
+import humanize
 from pyrogram import Client, filters, __version__
 from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -15,6 +11,11 @@ from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL
 from helper_func import subscribed, encode, decode, get_messages
 from database.database import add_user, del_user, full_userbase, present_user
 
+FILE_AUTO_DELETE = 10
+
+madflixofficials = FILE_AUTO_DELETE
+jishudeveloper = madflixofficials
+file_auto_delete = humanize.naturaldelta(jishudeveloper)
 
 WLCM = f"""
 ✨ʜᴇʟʟᴏ... I am Voltaic  <a href=https://telegra.ph/file/4a482570d3919af8ea784.jpg >🦋</a>
@@ -59,13 +60,15 @@ async def start_command(client: Client, message: Message):
                 ids = [int(int(argument[1]) / abs(client.db_channel.id))]
             except:
                 return
-        temp_msg = await message.reply("✨Processing...")
+        temp_msg = await message.reply("Please Wait...")
         try:
             messages = await get_messages(client, ids)
         except:
-            await message.reply_text("Something went wrong..!")
+            await message.reply_text("Something Went Wrong..!")
             return
         await temp_msg.delete()
+    
+        madflix_msgs = [] # List to keep track of sent messages
 
         for msg in messages:
 
@@ -80,13 +83,24 @@ async def start_command(client: Client, message: Message):
                 reply_markup = None
 
             try:
-                await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
-                await asyncio.sleep(0.5)
+                madflix_msg = await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
+                # await asyncio.sleep(0.5)
+                madflix_msgs.append(madflix_msg)
+                
             except FloodWait as e:
                 await asyncio.sleep(e.x)
-                await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
+                madflix_msg = await msg.copy(chat_id=message.from_user.id, caption = caption, parse_mode = ParseMode.HTML, reply_markup = reply_markup, protect_content=PROTECT_CONTENT)
+                madflix_msgs.append(madflix_msg)
+                
             except:
                 pass
+
+
+        k = await client.send_message(chat_id = message.from_user.id, text=f"<b>❗️ <u>IMPORTANT</u> ❗️</b>\n\nThis Video / File Will Be Deleted In {file_auto_delete} (Due To Copyright Issues).\n\n📌 Please Forward This Video / File To Somewhere Else And Start Downloading There.")
+
+        # Schedule the file deletion
+        asyncio.create_task(delete_files(madflix_msgs, client, k))
+
         return
     else:
         reply_markup = InlineKeyboardMarkup(
@@ -218,3 +232,13 @@ Unsuccessful: <code>{unsuccessful}</code></b>"""
         msg = await message.reply(REPLY_ERROR)
         await asyncio.sleep(8)
         await msg.delete()
+
+async def delete_files(messages, client, k):
+    await asyncio.sleep(FILE_AUTO_DELETE)  # Wait for the duration specified in config.py
+    for msg in messages:
+        try:
+            await client.delete_messages(chat_id=msg.chat.id, message_ids=[msg.id])
+        except Exception as e:
+            print(f"The attempt to delete the media {msg.id} was unsuccessful: {e}")
+    # await client.send_message(messages[0].chat.id, "Your Video / File Is Successfully Deleted ✅")
+    await k.edit_text("Your Video / File Is Successfully Deleted ✅")
