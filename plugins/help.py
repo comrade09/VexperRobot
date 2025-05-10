@@ -15,7 +15,7 @@ async def help(bot: Bot, message: Message):
  buttons = [
         [
             InlineKeyboardButton("PYQ",   callback_data= "help_pyq"),
-            InlineKeyboardButton("ELP",   callback_data= "help_elp"),
+            InlineKeyboardButton("ELP",   callback_data= "helpooelp"),
         ],
         [
             InlineKeyboardButton("Modules", callback_data= "help_mod"),
