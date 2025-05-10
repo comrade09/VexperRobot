@@ -19,11 +19,7 @@ async def hlpcallback(client: Bot, query: CallbackQuery):
                 [
         [
             InlineKeyboardButton("PYQ",   callback_data= "help_pyq"),
-            InlineKeyboardButton("ELP",   callback_data= "helpjhj_elp"),
-        ],
-        [
-            InlineKeyboardButton("Modules", callback_data= "help_mod"),
-            InlineKeyboardButton("Books", callback_data= "help_books"),
+            InlineKeyboardButton("PLP",   callback_data= "helpjhj_elp"),
         ],
         [
             InlineKeyboardButton("Notes",   callback_data= "help_nots"),
