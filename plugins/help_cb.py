@@ -8,7 +8,7 @@ from pyrogram.enums import ParseMode
 @Bot.on_callback_query(group=250)
 async def hlpcallback(client: Bot, query: CallbackQuery):
     data = query.data
-    if data == "helpkkk_cb":
+    if data == "help_cb":
         await query.message.edit_text(
             text = f'''[✨](https://telegra.ph/file/aae81838e9198e85680b2.jpg) Hey there... I'm `Voltaic Bot` 
  🔮I have lots of features like  Books, Modules , Notes etc ,  and many others useful commands 
@@ -19,7 +19,7 @@ async def hlpcallback(client: Bot, query: CallbackQuery):
                 [
         [
             InlineKeyboardButton("PYQ",   callback_data= "help_pyq"),
-            InlineKeyboardButton("ELP",   callback_data= "help_elp"),
+            InlineKeyboardButton("ELP",   callback_data= "helpjhj_elp"),
         ],
         [
             InlineKeyboardButton("Modules", callback_data= "help_mod"),
