@@ -18,10 +18,6 @@ async def help(bot: Bot, message: Message):
             InlineKeyboardButton("ELP",   callback_data= "helpooelp"),
         ],
         [
-            InlineKeyboardButton("Modules", callback_data= "help_mod"),
-            InlineKeyboardButton("Books", callback_data= "help_books"),
-        ],
-        [
             InlineKeyboardButton("Notes",   callback_data= "help_nots"),
             InlineKeyboardButton("Teachers", callback_data= "help_six"),
         ], 
