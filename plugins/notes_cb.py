@@ -184,8 +184,8 @@ async def zoo_nots(client: Bot, query: CallbackQuery):
     if data == "org_nots":
         await query.message.edit_text(
             text = f'''
-🔮YSY SIR Handouts : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮YSY SIR GOC 2 NOTES : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮YSY SIR Handouts : <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮YSY SIR GOC 2 NOTES : <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
 🔮SKC SIR  Notes  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTY5NzkxODI0OTE4NDY1Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
 🔮SKC SIR  GOC 1 NOTES <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI0MjUxOTA4MTcxMDkzODI">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
 🔮SKC SIR  GOC 2 NOTES <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI0MjYxOTIxMzQ1NDAwNjM">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
@@ -208,35 +208,35 @@ async def bot_nots(client: Bot, query: CallbackQuery):
         await query.message.edit_text(
             text = f'''🌱Botany notes Sn Sir 
 
-🔮 The Living World <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkxMjIwMDE3OTM1MDM5MQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Biological Classification<a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwODE5NDkwOTYyNzY2Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Plant Kingdom <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwNDE4OTYzOTkwNDk0Mw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Morphology of Flowering Plants <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwMTE4NTY4NzYxMjkwMA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Morpho Extra <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkxMTE5ODg2MTkxOTcxMA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Anatomy of Flowering Plants <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwNzE5MzU5MjE5Njk4Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Cell The Unit of Life <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkxMDE5NzU0NDQ4OTAyOQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Biomolecules <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwOTE5NjIyNzA1ODM0OA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Cell Cycle & Cell Division <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkxNTIwNDEzMTY0MjQzNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Fruit Chart <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkxNDIwMjgxNDIxMTc1Mw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Transport Plants <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwMjE4NzAwNTA0MzU4MQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Mineral Nutrition <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkxMzIwMTQ5Njc4MTA3Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Mineral chart <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwMDE4NDM3MDE4MjIxOQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Photosynthesis Higher Plants <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwNjE5MjI3NDc2NjMwNQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Respiration Plants <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwMzE4ODMyMjQ3NDI2Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Plant Growth & Development <a href="https://t.me/Voltaic_Robot?start=Z2V0LTkwNTE5MDk1NzMzNTYyNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Sexual Reproduction Flowering Plants <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg4OTE2OTg3ODQ0NDcyOA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Pre Mendelism <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5NTE3Nzc4MzAyODgxNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Principles of Inheritance & Variation <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5NDE3NjQ2NTU5ODEzMw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Gentics <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5NjE3OTEwMDQ1OTQ5NQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Gentics Incomplete Linkage  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5NzE4MDQxNzg5MDE3Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Molecular Basis of Inheritance <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5MjE3MzgzMDczNjc3MQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Strategies for Enhancement Food Production <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg4ODE2ODU2MTAxNDA0Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Microbes Human Welfare <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5MzE3NTE0ODE2NzQ1Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 The Living World <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkxMjIwMDE3OTM1MDM5MQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Biological Classification<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwODE5NDkwOTYyNzY2Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Plant Kingdom <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwNDE4OTYzOTkwNDk0Mw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Morphology of Flowering Plants <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwMTE4NTY4NzYxMjkwMA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Morpho Extra <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkxMTE5ODg2MTkxOTcxMA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Anatomy of Flowering Plants <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwNzE5MzU5MjE5Njk4Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Cell The Unit of Life <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkxMDE5NzU0NDQ4OTAyOQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Biomolecules <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwOTE5NjIyNzA1ODM0OA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Cell Cycle & Cell Division <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkxNTIwNDEzMTY0MjQzNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Fruit Chart <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkxNDIwMjgxNDIxMTc1Mw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Transport Plants <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwMjE4NzAwNTA0MzU4MQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Mineral Nutrition <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkxMzIwMTQ5Njc4MTA3Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Mineral chart <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwMDE4NDM3MDE4MjIxOQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Photosynthesis Higher Plants <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwNjE5MjI3NDc2NjMwNQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Respiration Plants <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwMzE4ODMyMjQ3NDI2Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Plant Growth & Development <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTkwNTE5MDk1NzMzNTYyNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Sexual Reproduction Flowering Plants <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg4OTE2OTg3ODQ0NDcyOA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Pre Mendelism <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5NTE3Nzc4MzAyODgxNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Principles of Inheritance & Variation <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5NDE3NjQ2NTU5ODEzMw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Gentics <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5NjE3OTEwMDQ1OTQ5NQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Gentics Incomplete Linkage  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5NzE4MDQxNzg5MDE3Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Molecular Basis of Inheritance <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5MjE3MzgzMDczNjc3MQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Strategies for Enhancement Food Production <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg4ODE2ODU2MTAxNDA0Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Microbes Human Welfare <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5MzE3NTE0ODE2NzQ1Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 🔮 Biotechnology:Principles & Processes <a href="">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Organisms & Populations <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5MTE3MjUxMzMwNjA5MA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Ecosystem <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5ODE4MTczNTMyMDg1Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Biodiversity & Conservation <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg5OTE4MzA1Mjc1MTUzOA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Environmental Issues <a href="https://t.me/Voltaic_Robot?start=Z2V0LTg4NzE2NzI0MzU4MzM2Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮 Organisms & Populations <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5MTE3MjUxMzMwNjA5MA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Ecosystem <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5ODE4MTczNTMyMDg1Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Biodiversity & Conservation <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg5OTE4MzA1Mjc1MTUzOA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Environmental Issues <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTg4NzE2NzI0MzU4MzM2Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
 
 🧧ᴄʀᴇᴅɪᴛꜱ <a href="http://t.me/linklockernet">ʟɪɴᴋ ʟᴏᴄᴋᴇʀ ɴᴇᴛᴡᴏʀᴋ ''',
             disable_web_page_preview = True,
