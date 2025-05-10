@@ -34,6 +34,9 @@ async def nots_cb(client: Bot, query: CallbackQuery):
 🎐NEET 2021 <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTYwNjc5ODM2Mjk5MjY4Ng"> Click Here </a>
 🎐NEET 2022 <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTYwODgwMDk5Nzg1NDA0OA"> Click Here </a>
 🎐NEET 2023 <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTYxODgxNDE3MjE2MDg1OA"> Click Here </a>
+🎐NEET 2024 <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTI0NTAyMjM3NTI4NzY0MDc"> Click Here </a>
+🎐NEET 2025 <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTI0NDkyMjI0MzU0NDU3MjY"> Click Here </a>
+
             ''',
             disable_web_page_preview = True,
             reply_markup = InlineKeyboardMarkup(
@@ -49,11 +52,7 @@ async def nots_cb(client: Bot, query: CallbackQuery):
      await query.message.edit_text(
      text = f''' 🧧 Chapterwise Pyq 
      
-    <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTcyMTk0OTg2NzUyMTAwMQ" >🔮BIOLOGY </a>
-    
-    <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTcyMDk0ODU1MDA5MDMyMA" >🔮CHEMISTRY  </a>
-    
-    <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTcyMzk1MjUwMjM4MjM2Mw">🔮PHYSICS  </a>
+   Unavailable
      ''',
      disable_web_page_preview = True,
      reply_markup = InlineKeyboardMarkup(
