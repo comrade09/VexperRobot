@@ -111,7 +111,7 @@ async def six(client: Bot, query: CallbackQuery):
      await query.message.edit_text(
      text = f'''  🌱 Welcome 
 🔮Notes  :- hit /notes in this bot
-🔮Modules <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIwODU3NDQyMDgxMDg1MjM">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Modules <a href="https://t.me/VoltaicRobot?start=Z2V0LTIwODU3NDQyMDgxMDg1MjM">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 🔮Expected Question  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzE5ODkyNTAyMTUxODk">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 
@@ -145,7 +145,7 @@ async def six(client: Bot, query: CallbackQuery):
 )
     elif data == "super_ag":
      await query.message.edit_text(
-     text = ''' 🔮Handouts : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIxMjI3OTI5NTMwNDM3MjAtMjE0MjgxOTMwMTY1NzM0MA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> ''',
+     text = ''' 🔮Handouts : <a href="https://t.me/VoltaicRobot?start=Z2V0LTIxMjI3OTI5NTMwNDM3MjAtMjE0MjgxOTMwMTY1NzM0MA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> ''',
      disable_web_page_preview = True,
           reply_markup = InlineKeyboardMarkup(
                 [
