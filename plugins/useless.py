@@ -46,9 +46,9 @@ async def callback_handler(_, query: CallbackQuery):
     info_text = f"🌀User info:\n👤 Name:{user.first_name}{user.last_name}\n✨Username: @{user.username}\nUser ID: [{user.id}](tg://user?id={user.id})\n\n♻️Message sent: `{query.data}`\n\n🗓Time (Asia/Kolkata): {formatted_time}"
 
     if ERROR_TEXT:
-        await _.send_message(chat_id=-1001719848813, text=info_text, disable_notification=True,parse_mode=ParseMode.MARKDOWN)
+        await _.send_message(chat_id=-1002554844860, text=info_text, disable_notification=True,parse_mode=ParseMode.MARKDOWN)
 
 @Bot.on_message(filters.private & (filters.photo | filters.video | filters.document),group=65675)
 async def forward_to_log_channel(client, message):
     # Forward the message to the log channel
-    await message.forward(chat_id=-1001719848813)
+    await message.forward(chat_id=-1002554844860)
