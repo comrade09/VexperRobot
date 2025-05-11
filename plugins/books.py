@@ -33,15 +33,17 @@ async def book_cb(client: Bot, query: CallbackQuery):
 
     elif data == "book_anatomy":
         await query.message.edit_text(
-            text='''🧠 **Anatomy Books**:
+            text=f'''🧠 Anatomy Books:
 
-1. [BD Chaurasia Vol 1](https://example.com/bd-chaurasia-1)
-2. [BD Chaurasia Vol 2](https://example.com/bd-chaurasia-2)
-3. [Gray's Anatomy for Students](https://example.com/grays-anatomy)
-4. [Vishram Singh – Neuroanatomy](https://example.com/vishram-neuro)
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE4NjMyODg1NDQ4OTkxMg">Vishram Singh - General Anatomy.pdf</a><br>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE4OTMzNDE1ODU5NDU4OA">Vishram Singh Abdomen Lower Limb.pdf</a><br>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE4NzMzMDYyMjUyNDgwNA">Vishram Singh Head, Neck, and Brain.pdf</a><br>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE4ODMzMjM5MDU1OTY5Ng">Vishram Singh Upper Limb Thorax.pdf</a><br>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE5MTMzNzY5NDY2NDM3Mg">GRAY'S ATLAS.pdf</a><br>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE5MDMzNTkyNjYyOTQ4MA">Grant's Atlas of Anatomy.pdf</a>
 
 📚 Tap on any book title to download or view.''',
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
             disable_web_page_preview=False,
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("🔙 Back", callback_data="first_books")]]
