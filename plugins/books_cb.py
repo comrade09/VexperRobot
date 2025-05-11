@@ -11,67 +11,9 @@ from config import OWNER_ID, BOT_USERNM
 @Bot.on_callback_query(group=253)
 async def phynots(client: Bot, query: CallbackQuery):
     data = query.data
-    if data == "phy_nots":
+    if data == "first_books":
         await query.message.reply_text(
-            text = f'''🌱𝙋𝙅 𝙎𝙄𝙍 𝙋𝙃𝙔𝙎𝙄𝘾𝙎 𝘾𝙇𝘼𝙎𝙎 𝙉𝙊𝙏𝙀𝙎
-
-🔮Units and Measurements <a href= "https://t.me/Voltaic_Network/18"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Basic Maths <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgxNTA3MjM4ODU3NDMzNA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Vectors <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwMDA1MjYyNzExNDExOQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Kinematics <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgxMDA2NTgwMTQyMDkyOQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Newton Laws of motion <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwODA2MzE2NjU1OTU2Nw"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Work Energy and power <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwNjA2MDUzMTY5ODIwNQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Circular Motion <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwOTA2NDQ4Mzk5MDI0OA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮COM <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwNzA2MTg0OTEyODg4Ng"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Rotation <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwNTA1OTIxNDI2NzUyNA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Gravitation <a href= "https://t.me/Voltaic_Network/18"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Elasticity <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwNDA1Nzg5NjgzNjg0Mw"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Fluids <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTI0MjgxOTQ3Njk0MDE0MjU"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-       
-🔮Thermodynamics <a href= "https://t.me/Voltaic_Network/18"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Simple Harmonic Motion <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwMzA1NjU3OTQwNjE2Mg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-
-🔮Waves <a href= "https://t.me/{BOT_USERNM}?start=Z2V0LTgwMjA1NTI2MTk3NTQ4MQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
-
-🔮Electrostatics <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0Njg5MzI2NzA4MDkwMjc">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Current Electricity <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0Njk5MzM5ODgyMzk3MDg">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Capacitors <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzA5MzUzMDU2NzAzODk">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Moving Charges and Magnetism <a href="https://t.me/Voltaic_Network/18">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Magnetism and Matter <a href="https://t.me/Voltaic_Network/18">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Electromagnetic Induction <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzE5MzY2MjMxMDEwNzA">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Alternating Current Old <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzI5Mzc5NDA1MzE3NTE">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Alternating Current New <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzM5MzkyNTc5NjI0MzI">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Electromagnetic Waves <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzQ5NDA1NzUzOTMxMTM">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Ray Optics  <a href="https://t.me/Voltaic_Network/18">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Wave Optics <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0Nzc5NDQ1Mjc2ODUxNTY">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Modern <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0Nzk5NDcxNjI1NDY1MTg">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Semiconductor 1  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzU5NDE4OTI4MjM3OTQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
-
-🔮Semiconductor 2 <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzY5NDMyMTAyNTQ0NzU">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
+            text = f'''🔮Semiconductor 2 <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzY5NDMyMTAyNTQ0NzU">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
             ''',
             disable_web_page_preview = True,
             reply_markup = InlineKeyboardMarkup(
