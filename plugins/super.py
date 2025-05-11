@@ -44,7 +44,7 @@ async def six(client: Bot, query: CallbackQuery):
      await query.message.edit_text(
      text = f''' 🌱 Welcome  
 🔮 Notes  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTY5NzkxODI0OTE4NDY1Nw">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
-🔮 Module Discussions  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyOTkwMjQ4MjA4NDM1NzY">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮 Module Discussions  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyOTkwMjQ4MjA4NDM1NzY">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
    
      ''',
      disable_web_page_preview = True,
@@ -81,14 +81,14 @@ async def six(client: Bot, query: CallbackQuery):
 
 🔮Notes  :- hit /notes in this bot
 
-🔮Jstar Points <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzI5OTA1Njc2NDU4NzAtMjI4NzAwOTAxMTY3NTQwNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Jstar Points <a href="https://t.me/{BOT_USERNM}t?start=Z2V0LTIyNzI5OTA1Njc2NDU4NzAtMjI4NzAwOTAxMTY3NTQwNA">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮Dpp/Modules  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTU3Njc1ODg0MDA3MjI1Ng">ᴄʟɪᴄᴋ ʜᴇʀᴇ  </a>
 
-🔮 PYQ JSTAR SERIES LINKS <a href="https://t.me/Voltaic_Robot?start=Z2V0LTI0MjIxODY4NjQ4MTczMzk">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 PYQ JSTAR SERIES LINKS <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI0MjIxODY4NjQ4MTczMzk">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
-🔮 Module Disscusion Class 11th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyOTEwMTQyODEzOTgxMjgtMjI5NTAxOTU1MTEyMDg1Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮 Module Disscusion Class 12th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyOTYwMjA4Njg1NTE1MzMtMjI5ODAyMzUwMzQxMjg5NQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Module Disscusion Class 11th  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyOTEwMTQyODEzOTgxMjgtMjI5NTAxOTU1MTEyMDg1Mg">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮 Module Disscusion Class 12th  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyOTYwMjA4Njg1NTE1MzMtMjI5ODAyMzUwMzQxMjg5NQ">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 🔮 Merged Modules 
 
@@ -111,8 +111,8 @@ async def six(client: Bot, query: CallbackQuery):
      await query.message.edit_text(
      text = f'''  🌱 Welcome 
 🔮Notes  :- hit /notes in this bot
-🔮Modules <a href="https://t.me/VoltaicRobot?start=Z2V0LTIwODU3NDQyMDgxMDg1MjM">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮Expected Question  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzE5ODkyNTAyMTUxODk">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Modules <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIwODU3NDQyMDgxMDg1MjM">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮Expected Question  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyNzE5ODkyNTAyMTUxODk">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
 
 
 
@@ -128,9 +128,9 @@ async def six(client: Bot, query: CallbackQuery):
 ),
     elif data == "super_rs":
      await query.message.edit_text(
-     text = ''' 🔮 Handwritten Notes <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzMDAwMjYxMzgyNzQyNTc">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
-🔮 Modules Class 11th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzMDQwMzE0MDc5OTY5ODE">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
-🔮 Modules Class 12th  <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzMDUwMzI3MjU0Mjc2NjI">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+     text = f''' 🔮 Handwritten Notes <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIzMDAwMjYxMzgyNzQyNTc">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮 Modules Class 11th  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIzMDQwMzE0MDc5OTY5ODE">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+🔮 Modules Class 12th  <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIzMDUwMzI3MjU0Mjc2NjI">ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
      
      ''',
      disable_web_page_preview = True,
@@ -145,7 +145,7 @@ async def six(client: Bot, query: CallbackQuery):
 )
     elif data == "super_ag":
      await query.message.edit_text(
-     text = ''' 🔮Handouts : <a href="https://t.me/VoltaicRobot?start=Z2V0LTIxMjI3OTI5NTMwNDM3MjAtMjE0MjgxOTMwMTY1NzM0MA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> ''',
+     text = f''' 🔮Handouts : <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIxMjI3OTI5NTMwNDM3MjAtMjE0MjgxOTMwMTY1NzM0MA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> ''',
      disable_web_page_preview = True,
           reply_markup = InlineKeyboardMarkup(
                 [
@@ -167,7 +167,7 @@ async def six(client: Bot, query: CallbackQuery):
 📡 Class 11 <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTY5ODkxOTU2NjYxNTMzOA"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
 📡 Class 12 <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTY5OTkyMDg4NDA0NjAxOQ"> ᴄʟɪᴄᴋ ʜᴇʀᴇ   </a>
 
-🔮Physicaholics Points <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIzMDEwMjc0NTU3MDQ5Mzg">   ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>   
+🔮Physicaholics Points <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIzMDEwMjc0NTU3MDQ5Mzg">   ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>   
 
 🔮Physicaholics Bot <a href="https://t.me/physicsaholicsbot">   ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>   ''',
      disable_web_page_preview = True,
@@ -189,8 +189,8 @@ async def six(client: Bot, query: CallbackQuery):
 )
     elif data == "super_ysy":
      await query.message.edit_text(
-     text = ''' 🔮Handouts : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
-🔮GOC 2 NOTES : <a href="https://t.me/Voltaic_Robot?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
+     text = f''' 🔮Handouts : <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a>
+🔮GOC 2 NOTES : <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyNzA5ODc5MzI3ODQ1MDg"> ᴄʟɪᴄᴋ ʜᴇʀᴇ </a> 
      ''',
      disable_web_page_preview = True,
           reply_markup = InlineKeyboardMarkup(
