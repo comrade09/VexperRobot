@@ -18,7 +18,7 @@ jishudeveloper = madflixofficials
 file_auto_delete = humanize.naturaldelta(jishudeveloper)
 
 WLCM = f"""
-✨ʜᴇʟʟᴏ... I am Voltaic  <a href=https://telegra.ph/file/4a482570d3919af8ea784.jpg >🦋</a>
+✨ʜᴇʟʟᴏ... I am Vexper <a href=https://telegra.ph/file/4a482570d3919af8ea784.jpg >🦋</a>
 """
 
 
@@ -106,19 +106,15 @@ async def start_command(client: Client, message: Message):
         reply_markup = InlineKeyboardMarkup(
             [
     [
-        InlineKeyboardButton(text="Help", callback_data="help_cb")
+        InlineKeyboardButton(text="Acess Contents", callback_data="help_cb")
     ],
     [
         InlineKeyboardButton(text="About Me 📓", callback_data="about"),
         
-    ],
+    ],           
     [
-        InlineKeyboardButton(text="Channels & Groups 📓", callback_data="grps"),
-        
-    ],            
-    [
-        InlineKeyboardButton(text="Support ✨", url=f"https://t.me/voltaic_network"),
-        InlineKeyboardButton(text="Updates 📡 ", url=f"https://t.me/voltaic_network"),
+        InlineKeyboardButton(text="Support ✨", url=f"https://t.me/vexper_network"),
+        InlineKeyboardButton(text="Updates 📡 ", url=f"https://t.me/vexper_network"),
     ],
 ]
         )
