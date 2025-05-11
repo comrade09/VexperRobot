@@ -38,20 +38,4 @@ async def hlpcallback(client: Bot, query: CallbackQuery):
             await query.message.reply_to_message.delete()
         except:
             pass
-    elif data == "first_books":
-        await query.message.edit_text(
-            text="📖 **1st Year Books:** Choose a subject below.",
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton("Anatomy", callback_data="book_anatomy"),
-                        InlineKeyboardButton("Biochemistry", callback_data="book_biochem"),
-                    ],
-                    [
-                        InlineKeyboardButton("Physiology", callback_data="book_physiology"),
-                        InlineKeyboardButton("🔙 Back", callback_data="year_1"),
-                    ]
-                ]
-            )
-        )            
+    
