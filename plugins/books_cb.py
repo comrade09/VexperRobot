@@ -11,7 +11,7 @@ from config import OWNER_ID, BOT_USERNM
 @Bot.on_callback_query(group=253)
 async def phynots(client: Bot, query: CallbackQuery):
     data = query.data
-    if data == "first_books":
+    if data == "firsthh_books":
         await query.message.reply_text(
             text = f'''🔮Semiconductor 2 <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTE0NzY5NDMyMTAyNTQ0NzU">ᴄʟɪᴄᴋ ʜᴇʀᴇ</a>
             ''',
