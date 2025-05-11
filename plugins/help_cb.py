@@ -31,12 +31,7 @@ async def hlpcallback(client: Bot, query: CallbackQuery):
             )
         )
 
-    elif data == "close":
-        await query.message.delete()
-        try:
-            await query.message.reply_to_message.delete()
-        except:
-            pass
+
 
     elif data == "year_1":
         await query.message.edit_text(
@@ -58,3 +53,9 @@ async def hlpcallback(client: Bot, query: CallbackQuery):
                 ]
             )
         )
+    elif data == "close":
+        await query.message.delete()
+        try:
+            await query.message.reply_to_message.delete()
+        except:
+            pass
