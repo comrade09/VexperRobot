@@ -46,7 +46,7 @@ async def hlpcallback(client: Bot, query: CallbackQuery):
                     [
                       InlineKeyboardButton("📝 Notes", callback_data="first_notes"),
                       InlineKeyboardButton("🎲 Random Stuff", callback_data="first_random")
-                    ]           
+                    ],          
                     [
                         InlineKeyboardButton("🔙 Back", callback_data="help_cb"),
                     ],
