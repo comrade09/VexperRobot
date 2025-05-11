@@ -32,7 +32,7 @@ async def help(bot: Bot, message: Message):
  
  
  
- await message.reply_text( text = f'''Notes of Unacademy Plus classes merged  ''',
+ await message.reply_text( text = f'''Notes of  Plus classes merged  ''',
    reply_markup = InlineKeyboardMarkup(buttons),                       
    disable_web_page_preview = False
    )
@@ -42,7 +42,7 @@ async def nots_cb(client: Bot, query: CallbackQuery):
     data = query.data
     if data == "help_nots":
         await query.message.edit_text(
-            text = f'''Notes of Unacademy Plus classes merged ''',
+            text = f'''Notes of Plus classes merged ''',
             disable_web_page_preview = True,
             reply_markup = InlineKeyboardMarkup(
                 [
