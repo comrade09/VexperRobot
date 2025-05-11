@@ -14,7 +14,7 @@ from config import OWNER_ID, BOT_USERNM
 @Bot.on_callback_query(group=270)
 async def elp_cb(client: Bot, query: CallbackQuery):
     data = query.data
-    if data == "year_1":
+    if data == "yddear_1":
         
             text = """Choose what you want """,
             reply_markup=InlineKeyboardMarkup(
@@ -35,22 +35,4 @@ async def elp_cb(client: Bot, query: CallbackQuery):
         ]
     ),
     parse_mode=ParseMode.MARKDOWN,        
-    )
- 
-elif data == "first_books":
-        await query.message.edit_text(
-            text="📖 **1st Year Books:** Choose a subject below.",
-            parse_mode=ParseMode.MARKDOWN,
-            reply_markup=InlineKeyboardMarkup(
-                [
-                    [
-                        InlineKeyboardButton("Anatomy", callback_data="book_anatomy"),
-                        InlineKeyboardButton("Biochemistry", callback_data="book_biochem"),
-                    ],
-                    [
-                        InlineKeyboardButton("Physiology", callback_data="book_physiology"),
-                        InlineKeyboardButton("🔙 Back", callback_data="year_1"),
-                    ]
-                ]
-            )
-        )            
+    )       
