@@ -38,20 +38,23 @@ async def hlpcallback(client: Bot, query: CallbackQuery):
         except:
             pass
 
-    elif data == "first_books":
+    elif data == "year_1":
         await query.message.edit_text(
             text="📖 **1st Year Books:** Choose a subject below.",
             parse_mode=ParseMode.MARKDOWN,
             reply_markup=InlineKeyboardMarkup(
                 [
                     [
-                        InlineKeyboardButton("Anatomy", callback_data="book_anatomy"),
-                        InlineKeyboardButton("Biochemistry", callback_data="book_biochem"),
+                      InlineKeyboardButton("📚 Lectures", callback_data="first_lectures"),
+                      InlineKeyboardButton("📖 Books", callback_data="first_books")
                     ],
                     [
-                        InlineKeyboardButton("Physiology", callback_data="book_physiology"),
-                        InlineKeyboardButton("🔙 Back", callback_data="year_1"),
-                    ]
+                      InlineKeyboardButton("📝 Notes", callback_data="first_notes"),
+                      InlineKeyboardButton("🎲 Random Stuff", callback_data="first_random")
+                    ]           
+                    [
+                        InlineKeyboardButton("🔙 Back", callback_data="help_cb"),
+                    ],
                 ]
             )
         )
