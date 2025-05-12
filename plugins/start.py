@@ -17,7 +17,7 @@ madflixofficials = FILE_AUTO_DELETE
 jishudeveloper = madflixofficials
 file_auto_delete = humanize.naturaldelta(jishudeveloper)
 
-WLCM = f"""
+WLCM = """
 ✨ʜᴇʟʟᴏ... {first} I am Vexper <a href=https://telegra.ph/file/4a482570d3919af8ea784.jpg >🦋</a>
 """
 
