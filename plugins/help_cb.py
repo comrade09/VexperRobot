@@ -10,7 +10,7 @@ async def hlpcallback(client: Bot, query: CallbackQuery):
     data = query.data
     if data == "help_cb":
         await query.message.edit_text(
-            text = f'''[✨](https://telegra.ph/file/aae81838e9198e85680b2.jpg) Hey there... I'm `Vexper Bot` 
+            text = f'''[✨](https://graph.org/file/9a1fac95deb33b3b14528-2b7e0c9f1aef47697c.jpg) Hey there... I'm `Vexper Bot` 
  🔮I have lots of features ''',
             parse_mode = ParseMode.MARKDOWN,
             disable_web_page_preview = False,
