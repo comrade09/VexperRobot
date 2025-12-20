@@ -15,7 +15,7 @@ async def book_cb(client: Bot, query: CallbackQuery):
 
     if data == "second_lectures":
         await query.message.edit_text(
-            text='''📖 **2nd Year Lectures :** Choose a subject below.''',
+            text='''📖<b> 2nd Year Lectures </b>: Choose a subject below.''',
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup(
                 [
@@ -42,21 +42,21 @@ async def book_cb(client: Bot, query: CallbackQuery):
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=False,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🔙 Back", callback_data="first_books")]]
+                [[InlineKeyboardButton("🔙 Back", callback_data="second_lectures")]]
             )
         )
 
     elif data == "lec_Microbiology":
         await query.message.edit_text(
-            text='''**Microbiology Lectures**:
+            text='''<b>Microbiology Lectures</b>:
 
 <a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIxNjU0NDE3MzEzNjMyOTYtMjIxNjU0NjU1NzA0NTYzMg"><b>Dr. Preeti Sharma ✘ PrepLadder Version X</b></a><br>
 
 ''',
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
             disable_web_page_preview=False,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🔙 Back", callback_data="first_books")]]
+                [[InlineKeyboardButton("🔙 Back", callback_data="second_lectures")]]
             )
         )
 
@@ -72,6 +72,6 @@ async def book_cb(client: Bot, query: CallbackQuery):
             parse_mode=ParseMode.MARKDOWN,
             disable_web_page_preview=False,
             reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🔙 Back", callback_data="first_books")]]
+                [[InlineKeyboardButton("🔙 Back", callback_data="second_lectures")]]
             )
         )
