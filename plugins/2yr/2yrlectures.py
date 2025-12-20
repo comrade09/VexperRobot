@@ -46,7 +46,7 @@ async def book_cb(client: Bot, query: CallbackQuery):
             )
         )
 
-    elif data == "lec_Microbiology":✘
+    elif data == "lec_Microbiology":
         await query.message.edit_text(
             text='''**Microbiology Lectures**:
 
