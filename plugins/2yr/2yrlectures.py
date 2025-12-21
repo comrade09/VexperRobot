@@ -35,10 +35,13 @@ async def book_cb(client: Bot, query: CallbackQuery):
         await query.message.edit_text(
             text=f'''Pharmacology Lectures
 
-<a href="https://t.me/?start=Z2V0LTIxNjU0NDE3MzEzNjMyOTYtMjIxNjU0NjU1NzA0NTYzMg">Vishram Singh - General Anatomy.pdf</a><br>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI0NjUwNTYyOTc2MTg1NjAtMjUwNTEzODUxMzg0MDAwMA"><b>Dr Gobind Rai Garg ✘ Cerebellum Part 1</b></a><
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI1MDYxNDA1NjkyNDU1MzYtMjU0NTIyMDczMDA2MTQ0MA"><b>Dr Gobind Rai Garg ✘ Cerebellum Part 2</b></a>
 
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI1NDYyMjI3ODU0NjY5NzYtMjU5NTMyMzUwMDMzODI0MA"><b>Dr Gobind Rai Garg ✘ PrepLadder Part 1</b></a>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI1OTYzMjU1NTU3NDM3NzYtMjYzOTQxMzkzODE4MTgyNA"><b>Dr Gobind Rai Garg ✘ PrepLadder Part 2</b></a>
 
-📚 Tap on any book title to download or view.''',
+''',
             parse_mode=ParseMode.HTML,
             disable_web_page_preview=False,
             reply_markup=InlineKeyboardMarkup(
@@ -48,9 +51,11 @@ async def book_cb(client: Bot, query: CallbackQuery):
 
     elif data == "lec_Microbiology":
         await query.message.edit_text(
-            text='''<b>Microbiology Lectures</b>:
+            text=f'''<b>Microbiology Lectures</b>:
 
-<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIxNjU0NDE3MzEzNjMyOTYtMjIxNjU0NjU1NzA0NTYzMg"><b>Dr. Preeti Sharma ✘ PrepLadder Version X</b></a><br>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIxNjU0NDE3MzEzNjMyOTYtMjIxNjU0NjU1NzA0NTYzMg"><b>Dr. Preeti Sharma ✘ PrepLadder Version X</b></a>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI2NDA0MTU5OTM1ODczNjAtMjY4OTUxNjcwODQ1ODYyNA"><b>Dr. Preeti Sharma ✘ Prepladder old</b></a>
+
 
 ''',
             parse_mode=ParseMode.HTML,
@@ -62,13 +67,21 @@ async def book_cb(client: Bot, query: CallbackQuery):
 
     elif data == "lec_Pathology":
         await query.message.edit_text(
-            text=''' **Pathology Lectures**:
+            text=f''' **Pathology Lectures**:
+            
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI2NDA0MTU5OTM1ODczNjAtMjY4OTUxNjcwODQ1ODYyNA"><b>Dr. Preeti Sharma ✘ Prepladder old</b></a>
 
-1. [Guyton and Hall Textbook of Medical Physiology](https://example.com/guyton)
-2. [Ganong's Review of Medical Physiology](https://example.com/ganong)
-3. [Sembulingam – Essentials of Medical Physiology](https://example.com/sembulingam)
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyMjA1NTQ3Nzg2Njc3NzYtMjI2MDYzNjk5NDg4OTIxNg"><b>Priyanka Sachdeva ✘ Medlive Part 1</b></a>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIyNjE2MzkwNTAyOTQ3NTItMjMxMTc0MTgyMDU3MTU1Mg"><b>Priyanka Sachdeva ✘ Medlive Part 2</b></a>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIzMTI3NDM4NzU5NzcwODgtMjM2Mjg0NjY0NjI1Mzg4OA"><b>Priyanka Sachdeva ✘ Medlive Part 3</b></a>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTIzNjM4NDg3MDE2NTk0MjQtMjQxMjk0OTQxNjUzMDY4OA"><b>Priyanka Sachdeva ✘ Medlive Part 4</b></a>
+<a href="https://t.me/{BOT_USERNM}?start=Z2V0LTI0MTM5NTE0NzE5MzYyMjQtMjQ2MzA1MjE4NjgwNzQ4OA"><b>Priyanka Sachdeva ✘ Medlive Part 5</b></a>
 
-🫀 These are key books for mastering body functions and systems.''',
+
+
+
+
+''',
             parse_mode=ParseMode.MARKDOWN,
             disable_web_page_preview=False,
             reply_markup=InlineKeyboardMarkup(
