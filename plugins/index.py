@@ -3,6 +3,16 @@ from pyrogram import filters
 from bot import Bot
 from config import API_ID, API_HASH, CHANNEL_ID, ADMINS
 from database.videos import add_video, count
+import os
+import asyncio
+from pyrogram import Client, filters
+from pyrogram.enums import ParseMode
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from bot import Bot
+from helper_func import subscribed, encode, decode, get_messages
+from pyrogram import __version__
+from config import OWNER_ID,BOT_USERNM
+from pyrogram.enums import ParseMode
 
 user = TelegramClient("user", API_ID, API_HASH)
 
