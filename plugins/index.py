@@ -97,7 +97,7 @@ def run_index(admin_id, status_msg_id):
 
     asyncio.run(worker())
 
-@Bot.on_message(filters.command("index"))
+@Bot.on_message(filters.command("index"),group=8978787)
 async def index_cmd(_, msg):
     global indexing, cancel_flag
 
@@ -123,7 +123,7 @@ async def index_cmd(_, msg):
 
     await msg.reply("📬 Progress is being sent to your DM")
 
-@Bot.on_message(filters.command("cancel"))
+@Bot.on_message(filters.command("cancel"),,group=897878786)
 async def cancel_cmd(_, msg):
     global cancel_flag
 
