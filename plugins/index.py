@@ -14,7 +14,7 @@ from pyrogram import __version__
 from config import OWNER_ID,BOT_USERNM
 from pyrogram.enums import ParseMode
 
-user = TelegramClient("user", API_ID, API_HASH)
+user = TelegramClient("user", APP_ID, API_HASH)
 
 @Bot.on_message(filters.command("index"),group=234776 )
 async def index_cmd(_, msg):
