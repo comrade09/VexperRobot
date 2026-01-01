@@ -23,43 +23,49 @@ from database.videos import add_video, count
 
 
 
+import threading, asyncio, time
+from telethon import TelegramClient
+from pyrogram import filters
+from bot import Bot
+from database.videos import add_video, count
+
 indexing = False
 cancel_flag = False
 
-def run_index(admin_id, status_msg_id):
+def run_index(client, admin_id, status_msg_id):
     async def worker():
         global indexing, cancel_flag
 
         user = TelegramClient("user", APP_ID, API_HASH)
         await user.start()
 
-        # get total messages
         total = (await user.get_messages(CHANNEL_ID, limit=0)).total
 
         scanned = 0
         added = 0
+        last_update = time.time()
 
         async for m in user.iter_messages(CHANNEL_ID):
             if cancel_flag:
                 break
 
             scanned += 1
-            remaining = total - scanned
 
             if m.video and m.text:
                 code = m.text.strip().upper()
                 if add_video(code, m.video.file_id, m.id):
                     added += 1
 
-            if scanned % 25 == 0:
-                Bot.loop.call_soon_threadsafe(
+            if time.time() - last_update >= 5:
+                remaining = total - scanned
+                client.loop.call_soon_threadsafe(
                     asyncio.create_task,
-                    Bot.edit_message_text(
+                    client.edit_message_text(
                         chat_id=admin_id,
                         message_id=status_msg_id,
                         text=(
                             f"🔎 Indexing…\n\n"
-                            f"📥 Scanned: {scanned}/{total}\n"
+                            f"📥 Scanned: {scanned} / {total}\n"
                             f"⏳ Remaining: {remaining}\n"
                             f"➕ Added: {added}\n"
                             f"📦 In DB: {count()}\n\n"
@@ -67,25 +73,26 @@ def run_index(admin_id, status_msg_id):
                         )
                     )
                 )
+                last_update = time.time()
 
         if cancel_flag:
             text = (
                 f"⛔ Index cancelled\n\n"
-                f"📥 Scanned: {scanned}/{total}\n"
+                f"📥 Scanned: {scanned} / {total}\n"
                 f"➕ Added: {added}\n"
                 f"📦 In DB: {count()}"
             )
         else:
             text = (
                 f"✅ Index complete\n\n"
-                f"📥 Scanned: {scanned}/{total}\n"
+                f"📥 Scanned: {scanned} / {total}\n"
                 f"➕ Added: {added}\n"
                 f"📦 In DB: {count()}"
             )
 
-        Bot.loop.call_soon_threadsafe(
+        client.loop.call_soon_threadsafe(
             asyncio.create_task,
-            Bot.edit_message_text(
+            client.edit_message_text(
                 chat_id=admin_id,
                 message_id=status_msg_id,
                 text=text
@@ -97,8 +104,8 @@ def run_index(admin_id, status_msg_id):
 
     asyncio.run(worker())
 
-@Bot.on_message(filters.command("index"),group=8978787)
-async def index_cmd(_, msg):
+@Bot.on_message(filters.command("index"))
+async def index_cmd(client, msg):
     global indexing, cancel_flag
 
     if msg.from_user.id not in ADMINS:
@@ -112,18 +119,15 @@ async def index_cmd(_, msg):
     indexing = True
     cancel_flag = False
 
-    # Send DM to admin
-    status = await Bot.send_message(msg.from_user.id, "🔄 Starting index…")
+    status = await client.send_message(msg.from_user.id, "🔄 Starting index…")
 
     threading.Thread(
         target=run_index,
-        args=(msg.from_user.id, status.id),
+        args=(client, msg.from_user.id, status.id),
         daemon=True
     ).start()
 
-    await msg.reply("📬 Progress is being sent to your DM")
-
-@Bot.on_message(filters.command("cancel"),group=897878786)
+@Bot.on_message(filters.command("cancel"))
 async def cancel_cmd(_, msg):
     global cancel_flag
 
