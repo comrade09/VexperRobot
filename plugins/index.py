@@ -21,12 +21,7 @@ from bot import Bot
 
 from database.videos import add_video, count
 
-import threading, asyncio
-from telethon import TelegramClient
-from pyrogram import filters
-from bot import Bot
-from config import API_ID, API_HASH, CHANNEL_ID, ADMINS
-from database.videos import add_video, count
+
 
 indexing = False
 cancel_flag = False
