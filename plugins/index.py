@@ -14,38 +14,119 @@ from pyrogram import __version__
 from config import OWNER_ID,BOT_USERNM
 from pyrogram.enums import ParseMode
 
-user = TelegramClient("user", APP_ID, API_HASH)
+import threading, asyncio
+from telethon import TelegramClient
+from pyrogram import filters
+from bot import Bot
 
-@Bot.on_message(filters.command("index"),group=234776 )
-async def index_cmd(_, msg):
-    if msg.from_user.id not in ADMINS:
-        await msg.reply("❌ You are not authorized")
-        return
+from database.videos import add_video, count
 
-    status = await msg.reply("🔄 Starting index...")
-    await user.start()
+indexing = False
+cancel_flag = False
 
-    scanned = 0
-    added = 0
+def run_index(status_chat_id, status_msg_id):
+    async def worker():
+        global indexing, cancel_flag
+        user = TelegramClient("user", APP_ID, API_HASH)
+        await user.start()
 
-    async for m in user.iter_messages(CHANNEL_ID):
-        scanned += 1
+        scanned = 0
+        added = 0
 
-        if m.video and m.text:
-            code = m.text.strip().upper()
-            if add_video(code, m.video.file_id, m.id):
-                added += 1
+        async for m in user.iter_messages(CHANNEL_ID):
+            if cancel_flag:
+                break
 
-        if scanned % 50 == 0:
-            await status.edit(
-                f"📥 Scanned: {scanned}\n"
-                f"➕ Added: {added}\n"
-                f"📦 Total: {count()}"
+            scanned += 1
+
+            if m.video and m.text:
+                code = m.text.strip().upper()
+                if add_video(code, m.video.file_id, m.id):
+                    added += 1
+
+            if scanned % 25 == 0:
+                Bot.loop.call_soon_threadsafe(
+                    asyncio.create_task,
+                    Bot.edit_message_text(
+                        chat_id=status_chat_id,
+                        message_id=status_msg_id,
+                        text=(
+                            f"🔎 Indexing...\n"
+                            f"📥 {scanned}\n"
+                            f"➕ {added}\n"
+                            f"📦 {count()}\n\n"
+                            f"Use /cancel to stop"
+                        )
+                    )
+                )
+
+        if cancel_flag:
+            Bot.loop.call_soon_threadsafe(
+                asyncio.create_task,
+                Bot.edit_message_text(
+                    chat_id=status_chat_id,
+                    message_id=status_msg_id,
+                    text=(
+                        f"⛔ Index cancelled\n\n"
+                        f"📥 {scanned}\n"
+                        f"➕ {added}\n"
+                        f"📦 {count()}"
+                    )
+                )
+            )
+        else:
+            Bot.loop.call_soon_threadsafe(
+                asyncio.create_task,
+                Bot.edit_message_text(
+                    chat_id=status_chat_id,
+                    message_id=status_msg_id,
+                    text=(
+                        f"✅ Index complete\n\n"
+                        f"📥 {scanned}\n"
+                        f"➕ {added}\n"
+                        f"📦 {count()}"
+                    )
+                )
             )
 
-    await status.edit(
-        f"✅ Done\n\n"
-        f"📥 Scanned: {scanned}\n"
-        f"➕ Added: {added}\n"
-        f"📦 Total: {count()}"
-    )
+        cancel_flag = False
+        indexing = False
+
+    asyncio.run(worker())
+
+@Bot.on_message(filters.command("index"))
+async def index_cmd(_, msg):
+    global indexing, cancel_flag
+
+    if msg.from_user.id not in ADMINS:
+        await msg.reply("❌ Not allowed")
+        return
+
+    if indexing:
+        await msg.reply("⚠ Index already running\nUse /cancel to stop")
+        return
+
+    indexing = True
+    cancel_flag = False
+
+    status = await msg.reply("🔄 Starting index...")
+    threading.Thread(
+        target=run_index,
+        args=(status.chat.id, status.id),
+        daemon=True
+    ).start()
+
+@Bot.on_message(filters.command("cancel"))
+async def cancel_cmd(_, msg):
+    global cancel_flag
+
+    if msg.from_user.id not in ADMINS:
+        await msg.reply("❌ Not allowed")
+        return
+
+    if not indexing:
+        await msg.reply("ℹ No index is running")
+        return
+
+    cancel_flag = True
+    await msg.reply("⛔ Cancel signal sent. Stopping…")
