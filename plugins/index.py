@@ -21,14 +21,25 @@ from bot import Bot
 
 from database.videos import add_video, count
 
+import threading, asyncio
+from telethon import TelegramClient
+from pyrogram import filters
+from bot import Bot
+from config import API_ID, API_HASH, CHANNEL_ID, ADMINS
+from database.videos import add_video, count
+
 indexing = False
 cancel_flag = False
 
-def run_index(status_chat_id, status_msg_id):
+def run_index(admin_id, status_msg_id):
     async def worker():
         global indexing, cancel_flag
+
         user = TelegramClient("user", APP_ID, API_HASH)
         await user.start()
+
+        # get total messages
+        total = (await user.get_messages(CHANNEL_ID, limit=0)).total
 
         scanned = 0
         added = 0
@@ -38,6 +49,7 @@ def run_index(status_chat_id, status_msg_id):
                 break
 
             scanned += 1
+            remaining = total - scanned
 
             if m.video and m.text:
                 code = m.text.strip().upper()
@@ -48,53 +60,49 @@ def run_index(status_chat_id, status_msg_id):
                 Bot.loop.call_soon_threadsafe(
                     asyncio.create_task,
                     Bot.edit_message_text(
-                        chat_id=status_chat_id,
+                        chat_id=admin_id,
                         message_id=status_msg_id,
                         text=(
-                            f"🔎 Indexing...\n"
-                            f"📥 {scanned}\n"
-                            f"➕ {added}\n"
-                            f"📦 {count()}\n\n"
+                            f"🔎 Indexing…\n\n"
+                            f"📥 Scanned: {scanned}/{total}\n"
+                            f"⏳ Remaining: {remaining}\n"
+                            f"➕ Added: {added}\n"
+                            f"📦 In DB: {count()}\n\n"
                             f"Use /cancel to stop"
                         )
                     )
                 )
 
         if cancel_flag:
-            Bot.loop.call_soon_threadsafe(
-                asyncio.create_task,
-                Bot.edit_message_text(
-                    chat_id=status_chat_id,
-                    message_id=status_msg_id,
-                    text=(
-                        f"⛔ Index cancelled\n\n"
-                        f"📥 {scanned}\n"
-                        f"➕ {added}\n"
-                        f"📦 {count()}"
-                    )
-                )
+            text = (
+                f"⛔ Index cancelled\n\n"
+                f"📥 Scanned: {scanned}/{total}\n"
+                f"➕ Added: {added}\n"
+                f"📦 In DB: {count()}"
             )
         else:
-            Bot.loop.call_soon_threadsafe(
-                asyncio.create_task,
-                Bot.edit_message_text(
-                    chat_id=status_chat_id,
-                    message_id=status_msg_id,
-                    text=(
-                        f"✅ Index complete\n\n"
-                        f"📥 {scanned}\n"
-                        f"➕ {added}\n"
-                        f"📦 {count()}"
-                    )
-                )
+            text = (
+                f"✅ Index complete\n\n"
+                f"📥 Scanned: {scanned}/{total}\n"
+                f"➕ Added: {added}\n"
+                f"📦 In DB: {count()}"
             )
+
+        Bot.loop.call_soon_threadsafe(
+            asyncio.create_task,
+            Bot.edit_message_text(
+                chat_id=admin_id,
+                message_id=status_msg_id,
+                text=text
+            )
+        )
 
         cancel_flag = False
         indexing = False
 
     asyncio.run(worker())
 
-@Bot.on_message(filters.command("index"),group=767557)
+@Bot.on_message(filters.command("index"))
 async def index_cmd(_, msg):
     global indexing, cancel_flag
 
@@ -109,14 +117,18 @@ async def index_cmd(_, msg):
     indexing = True
     cancel_flag = False
 
-    status = await msg.reply("🔄 Starting index...")
+    # Send DM to admin
+    status = await Bot.send_message(msg.from_user.id, "🔄 Starting index…")
+
     threading.Thread(
         target=run_index,
-        args=(status.chat.id, status.id),
+        args=(msg.from_user.id, status.id),
         daemon=True
     ).start()
 
-@Bot.on_message(filters.command("cancei"),group=8777788)
+    await msg.reply("📬 Progress is being sent to your DM")
+
+@Bot.on_message(filters.command("cancel"))
 async def cancel_cmd(_, msg):
     global cancel_flag
 
@@ -125,8 +137,8 @@ async def cancel_cmd(_, msg):
         return
 
     if not indexing:
-        await msg.reply("ℹ No index is running")
+        await msg.reply("ℹ No index running")
         return
 
     cancel_flag = True
-    await msg.reply("⛔ Cancel signal sent. Stopping…")
+    await msg.reply("⛔ Cancel signal sent")
