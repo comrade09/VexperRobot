@@ -9,3 +9,4 @@ dnspython
 aiohttp
 pytz
 humanize
+telethon
