@@ -94,7 +94,7 @@ def run_index(status_chat_id, status_msg_id):
 
     asyncio.run(worker())
 
-@Bot.on_message(filters.command("index"))
+@Bot.on_message(filters.command("index"),group=767557)
 async def index_cmd(_, msg):
     global indexing, cancel_flag
 
@@ -116,7 +116,7 @@ async def index_cmd(_, msg):
         daemon=True
     ).start()
 
-@Bot.on_message(filters.command("cancel"))
+@Bot.on_message(filters.command("cancei"),group=8777788)
 async def cancel_cmd(_, msg):
     global cancel_flag
 
