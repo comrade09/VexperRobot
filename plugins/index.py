@@ -123,7 +123,7 @@ async def index_cmd(_, msg):
 
     await msg.reply("📬 Progress is being sent to your DM")
 
-@Bot.on_message(filters.command("cancel"),,group=897878786)
+@Bot.on_message(filters.command("cancel"),group=897878786)
 async def cancel_cmd(_, msg):
     global cancel_flag
 
