@@ -20,20 +20,16 @@ from helper_func import subscribed, encode, decode, get_messages
 from pyrogram import __version__
 from config import OWNER_ID, BOT_USERNM
 
-# ================= COLLECTION =================
-
 # plugins/habits/handlers.py
-
-import asyncio
-from datetime import date, timedelta, datetime
 
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-from bson import ObjectId
-
-from bot import Bot
+from datetime import date, timedelta, datetime
 from database.database import database
+
+from bson import ObjectId
+from bot import Bot
 
 
 # ================= COLLECTION =================
@@ -41,7 +37,7 @@ from database.database import database
 habits_col = database["habits"]
 
 
-# ================= STREAK CALCULATOR =================
+# ================= STREAK =================
 
 def get_streaks(logs: dict):
 
@@ -55,7 +51,6 @@ def get_streaks(logs: dict):
     if not dates:
         return 0, 0
 
-    # Best streak
     best = 1
     temp = 1
 
@@ -67,7 +62,6 @@ def get_streaks(logs: dict):
         else:
             temp = 1
 
-    # Current streak
     today = date.today()
     cur = 0
     d = today
@@ -83,49 +77,77 @@ def get_streaks(logs: dict):
     return cur, best
 
 
+# ================= GAMIFICATION =================
 
-# ================= ADD HABIT =================
+def calc_level(xp):
+    return max(1, xp // 100 + 1)
 
-@Bot.on_message(filters.command("addhabit"),group=869889)
+
+def get_badges(streak, best, xp):
+
+    badges = []
+
+    if best >= 7:
+        badges.append("🥉 7-Day Streak")
+
+    if best >= 30:
+        badges.append("🥈 30-Day Streak")
+
+    if best >= 90:
+        badges.append("🥇 90-Day Streak")
+
+    if xp >= 500:
+        badges.append("💎 500 XP")
+
+    if xp >= 1000:
+        badges.append("👑 1000 XP")
+
+    return badges
+
+
+# ================= ADD =================
+
+@Bot.on_message(filters.command("addhabit"), group=869889)
 async def add_habit(_, msg):
 
     if len(msg.command) < 2:
-        return await msg.reply("Use: /addhabit <habit name>")
+        return await msg.reply("Use: /addhabit <name>")
 
     habit = " ".join(msg.command[1:])
     uid = msg.from_user.id
 
     if habits_col.find_one({"user_id": uid, "habit": habit}):
-        return await msg.reply("Habit already exists.")
+        return await msg.reply("Already exists.")
 
     habits_col.insert_one({
         "user_id": uid,
         "habit": habit,
         "logs": {},
+        "xp": 0,
+        "level": 1,
         "created": datetime.utcnow()
     })
 
     await msg.reply(f"✅ Added: {habit}")
 
 
-# ================= /LOG =================
+# ================= LOG =================
 
-@Bot.on_message(filters.command("log"),group=86988954)
+@Bot.on_message(filters.command("log"), group=86988954)
 async def log_menu(_, msg):
 
     uid = msg.from_user.id
-
     habits = list(habits_col.find({"user_id": uid}))
 
     if not habits:
-        return await msg.reply("No habits. Use /addhabit")
+        return await msg.reply("No habits.")
 
     buttons = []
 
     for h in habits:
-        buttons.append(
-            [InlineKeyboardButton(h["habit"], f"log:{h['_id']}")]
-        )
+        buttons.append([
+            InlineKeyboardButton(h["habit"], f"log:{h['_id']}")
+        ])
 
     await msg.reply(
         "Select Habit:",
@@ -133,13 +155,12 @@ async def log_menu(_, msg):
     )
 
 
-# ================= SELECT HABIT =================
+# ================= SELECT =================
 
-@Bot.on_callback_query(filters.regex("^log:"),group=866569889)
+@Bot.on_callback_query(filters.regex("^log:"), group=866569889)
 async def select_habit(_, cq):
 
     hid = cq.data.split(":")[1]
-
     habit = habits_col.find_one({"_id": ObjectId(hid)})
 
     if not habit:
@@ -148,7 +169,6 @@ async def select_habit(_, cq):
     today = date.today()
 
     text = f"📅 {habit['habit']}\n\n"
-
     buttons = []
 
     for i in range(6, -1, -1):
@@ -156,16 +176,16 @@ async def select_habit(_, cq):
         d = today - timedelta(days=i)
         ds = str(d)
 
-        status = habit["logs"].get(ds)
+        val = habit["logs"].get(ds)
 
-        if status is True:
+        if val is True:
             icon = "🟢"
-        elif status is False:
+        elif val is False:
             icon = "🔴"
         else:
             icon = "⚪"
 
-        text += f"{d.strftime('%a %d %b')}  {icon}\n"
+        text += f"{d.strftime('%a %d %b')} {icon}\n"
 
         buttons.append([
             InlineKeyboardButton(
@@ -180,9 +200,9 @@ async def select_habit(_, cq):
     )
 
 
-# ================= MARK DAY =================
+# ================= MARK =================
 
-@Bot.on_callback_query(filters.regex("^mark:"),group=869535)
+@Bot.on_callback_query(filters.regex("^mark:"), group=869535)
 async def mark_day(_, cq):
 
     _, hid, day = cq.data.split(":")
@@ -196,6 +216,16 @@ async def mark_day(_, cq):
 
     if current is None:
         new = True
+
+        old_xp = habit.get("xp", 0)
+        new_xp = old_xp + 10
+        lvl = calc_level(new_xp)
+
+        habits_col.update_one(
+            {"_id": habit["_id"]},
+            {"$set": {"xp": new_xp, "level": lvl}}
+        )
+
     elif current is True:
         new = False
     else:
@@ -216,17 +246,18 @@ async def mark_day(_, cq):
         )
 
     await select_habit(_, cq)
-# ================= DELETE HABIT (BUTTON) =================
 
-@Bot.on_message(filters.command("delete"),group=756567)
+
+# ================= DELETE =================
+
+@Bot.on_message(filters.command("delete"), group=756567)
 async def delete_menu(_, msg):
 
     uid = msg.from_user.id
-
     habits = list(habits_col.find({"user_id": uid}))
 
     if not habits:
-        return await msg.reply("No habits to delete.")
+        return await msg.reply("No habits.")
 
     buttons = []
 
@@ -239,20 +270,15 @@ async def delete_menu(_, msg):
         ])
 
     await msg.reply(
-        "Select habit to delete:",
+        "Select habit:",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
 
-@Bot.on_callback_query(filters.regex("^del:"),group=7565675)
+@Bot.on_callback_query(filters.regex("^del:"), group=7565675)
 async def delete_confirm(_, cq):
 
     hid = cq.data.split(":")[1]
-
-    habit = habits_col.find_one({"_id": ObjectId(hid)})
-
-    if not habit:
-        return await cq.answer("Not found")
 
     buttons = InlineKeyboardMarkup([
         [
@@ -262,208 +288,118 @@ async def delete_confirm(_, cq):
     ])
 
     await cq.message.edit(
-        f"⚠️ Delete **{habit['habit']}** ?\nThis cannot be undone.",
+        "⚠️ Confirm delete?",
         reply_markup=buttons
     )
 
 
-@Bot.on_callback_query(filters.regex("^del_yes:"),group=786724434)
+@Bot.on_callback_query(filters.regex("^del_yes:"), group=786724434)
 async def delete_final(_, cq):
 
     hid = cq.data.split(":")[1]
-
     habits_col.delete_one({"_id": ObjectId(hid)})
 
-    await cq.message.edit("✅ Habit deleted.")
+    await cq.message.edit("✅ Deleted.")
 
 
-@Bot.on_callback_query(filters.regex("^del_cancel"),group=8667)
+@Bot.on_callback_query(filters.regex("^del_cancel"), group=8667)
 async def delete_cancel(_, cq):
 
     await cq.message.edit("❌ Cancelled.")
 
 
-# ================= WEEKLY =================
+# ================= EDIT =================
 
-@Bot.on_message(filters.command("weekly"),group=869433)
-async def weekly_report(_, msg):
+@Bot.on_message(filters.command("edithabit"), group=7867244545)
+async def edit_habit(_, msg):
 
-    uid = msg.from_user.id
-    habits = list(habits_col.find({"user_id": uid}))
+    if "|" not in msg.text:
+        return await msg.reply("Use: /edithabit Old | New")
 
-    if not habits:
-        return await msg.reply("No habits.")
+    old, new = msg.text.split("|", 1)
 
-    today = date.today()
-    start = today - timedelta(days=6)
-
-    text = "📊 Weekly Report\n\n"
-
-    for h in habits:
-
-        cur, best = get_streaks(h["logs"])
-
-        done = miss = 0
-
-        for i in range(7):
-
-            d = start + timedelta(days=i)
-            val = h["logs"].get(str(d))
-
-            if val is True:
-                done += 1
-            elif val is False:
-                miss += 1
-
-        text += (
-            f"• {h['habit']}\n"
-            f"  🟢 {done}  🔴 {miss}  ⚪ {7-done-miss}\n"
-            f"  🔥 {cur}  🏆 {best}\n\n"
-        )
-
-    await msg.reply(text)
-
-
-# ================= HEATMAP =================
-
-@Bot.on_message(filters.command("heatmap"),group=869889545)
-async def heatmap(_, msg):
+    old = old.replace("/edithabit", "").strip()
+    new = new.strip()
 
     uid = msg.from_user.id
-    habits = list(habits_col.find({"user_id": uid}))
 
-    if not habits:
-        return await msg.reply("No habits.")
-
-    today = date.today()
-    start = today - timedelta(days=29)
-
-    text = "🔥 30-Day Heatmap\n\n"
-
-    for h in habits:
-
-        cur, best = get_streaks(h["logs"])
-
-        text += f"📌 {h['habit']} 🔥{cur} 🏆{best}\n"
-
-        row = ""
-
-        for i in range(30):
-
-            d = start + timedelta(days=i)
-            val = h["logs"].get(str(d))
-
-            if val is True:
-                row += "🟩"
-            elif val is False:
-                row += "🟥"
-            else:
-                row += "⬜"
-
-            if (i + 1) % 10 == 0:
-                row += "\n"
-
-        text += row + "\n\n"
-
-    await msg.reply(text)
-
-
-# ================= MONTH =================
-
-@Bot.on_message(filters.command("month"),group=86988942)
-async def month(_, msg):
-
-    uid = msg.from_user.id
-    habits = list(habits_col.find({"user_id": uid}))
-
-    if not habits:
-        return await msg.reply("No habits.")
-
-    today = date.today()
-    start = today - timedelta(days=29)
-
-    text = "📊 Monthly Stats\n\n"
-
-    for h in habits:
-
-        cur, best = get_streaks(h["logs"])
-
-        text += f"🏷️ {h['habit']} 🔥{cur} 🏆{best}\n"
-
-        line = ""
-
-        for i in range(30):
-
-            d = start + timedelta(days=i)
-            val = h["logs"].get(str(d))
-
-            if val is True:
-                icon = "🟢"
-            elif val is False:
-                icon = "🔴"
-            else:
-                icon = "⚪"
-
-            line += f"{d.day:02d}{icon}  "
-
-            if (i + 1) % 5 == 0:
-                line += "\n"
-
-        text += line + "\n\n"
-
-    await msg.reply(text)
-
-
-# ================= SINGLE HABIT =================
-
-@Bot.on_message(filters.command("habit"),group=8694343)
-async def habit_stats(_, msg):
-
-    if len(msg.command) < 2:
-        return await msg.reply("Use: /habit <name>")
-
-    name = " ".join(msg.command[1:]).lower()
-    uid = msg.from_user.id
-
-    habit = habits_col.find_one({
-        "user_id": uid,
-        "habit": {"$regex": f"^{name}$", "$options": "i"}
-    })
-
-    if not habit:
-        return await msg.reply("Habit not found.")
-
-    cur, best = get_streaks(habit["logs"])
-
-    today = date.today()
-    start = today - timedelta(days=29)
-
-    text = (
-        f"📅 {habit['habit']} (30 Days)\n"
-        f"🔥 Current: {cur}  🏆 Best: {best}\n\n"
+    res = habits_col.find_one_and_update(
+        {
+            "user_id": uid,
+            "habit": {"$regex": f"^{old}$", "$options": "i"}
+        },
+        {"$set": {"habit": new}}
     )
 
-    for i in range(30):
+    if not res:
+        return await msg.reply("Not found.")
 
-        d = start + timedelta(days=i)
-        val = habit["logs"].get(str(d))
-
-        if val is True:
-            icon = "🟢 Done"
-        elif val is False:
-            icon = "🔴 Missed"
-        else:
-            icon = "⚪ Not logged"
-
-        text += f"{d.strftime('%d %b %a')} → {icon}\n"
-
-    await msg.reply(text)
+    await msg.reply("✅ Updated.")
 
 
-# ================= DASHBOARD =================
+# ================= GOAL =================
 
-@Bot.on_message(filters.command("life"),group=765635355)
-async def dashboard(_, msg):
+@Bot.on_message(filters.command("setgoal"), group=78672665)
+async def set_goal(_, msg):
+
+    if len(msg.command) < 3:
+        return await msg.reply("Use: /setgoal Habit 5")
+
+    name = msg.command[1]
+
+    try:
+        goal = int(msg.command[2])
+    except:
+        return await msg.reply("Invalid number.")
+
+    uid = msg.from_user.id
+
+    res = habits_col.find_one_and_update(
+        {
+            "user_id": uid,
+            "habit": {"$regex": f"^{name}$", "$options": "i"}
+        },
+        {"$set": {"goal": goal}}
+    )
+
+    if not res:
+        return await msg.reply("Not found.")
+
+    await msg.reply("🎯 Goal set.")
+
+
+# ================= NOTE =================
+
+@Bot.on_message(filters.command("note"), group=786724434334)
+async def add_note(_, msg):
+
+    if len(msg.command) < 3:
+        return await msg.reply("Use: /note Habit text")
+
+    habit_name = msg.command[1]
+    note = " ".join(msg.command[2:])
+
+    uid = msg.from_user.id
+    today = str(date.today())
+
+    res = habits_col.find_one_and_update(
+        {
+            "user_id": uid,
+            "habit": {"$regex": f"^{habit_name}$", "$options": "i"}
+        },
+        {"$set": {f"notes.{today}": note}}
+    )
+
+    if not res:
+        return await msg.reply("Not found.")
+
+    await msg.reply("📝 Saved.")
+
+
+# ================= PROFILE =================
+
+@Bot.on_message(filters.command("profile"), group=784367234)
+async def profile(_, msg):
 
     uid = msg.from_user.id
     habits = list(habits_col.find({"user_id": uid}))
@@ -471,65 +407,48 @@ async def dashboard(_, msg):
     if not habits:
         return await msg.reply("No habits.")
 
-    total = len(habits)
-    score = 0
+    total_xp = 0
+    total_done = 0
+    total_days = 0
 
-    text = "📊 Life Dashboard\n\n"
-
-    for h in habits:
-
-        cur, best = get_streaks(h["logs"])
-        score += cur
-
-        text += f"• {h['habit']} → 🔥{cur} 🏆{best}\n"
-
-    discipline = min(100, int((score / (total * 7)) * 100))
-
-    text += f"\n💯 Life Score: {discipline}/100"
-
-    await msg.reply(text)
-
-
-# ================= MONTHLY COMPARE =================
-
-@Bot.on_message(filters.command("compare"),group=894366)
-async def compare(_, msg):
-
-    uid = msg.from_user.id
-    habits = list(habits_col.find({"user_id": uid}))
-
-    if not habits:
-        return await msg.reply("No habits.")
-
-    today = date.today()
-
-    this_month = today.replace(day=1)
-    last_month = (this_month - timedelta(days=1)).replace(day=1)
-
-    text = "📈 Monthly Comparison\n\n"
+    text = "🎮 Profile\n\n"
 
     for h in habits:
 
-        cur_m = 0
-        prev_m = 0
+        logs = h["logs"]
 
-        for d, v in h["logs"].items():
+        done = sum(1 for v in logs.values() if v is True)
+        total = len(logs)
 
-            d = date.fromisoformat(d)
+        xp = h.get("xp", 0)
+        total_xp += xp
 
-            if v is True:
+        cur, best = get_streaks(logs)
 
-                if d >= this_month:
-                    cur_m += 1
+        percent = int((done / total) * 100) if total else 0
 
-                elif last_month <= d < this_month:
-                    prev_m += 1
+        badges = get_badges(cur, best, xp)
+        badge_text = ", ".join(badges) if badges else "None"
 
-        diff = cur_m - prev_m
-        sign = "+" if diff >= 0 else ""
+        total_done += done
+        total_days += total
 
-        text += f"• {h['habit']}: {prev_m} → {cur_m} ({sign}{diff})\n"
+        text += (
+            f"📌 {h['habit']}\n"
+            f"Progress: {percent}%\n"
+            f"🔥 {cur} | 🏆 {best}\n"
+            f"XP: {xp}\n"
+            f"Badges: {badge_text}\n\n"
+        )
+
+    level = calc_level(total_xp)
+    overall = int((total_done / total_days) * 100) if total_days else 0
+
+    text += (
+        f"━━━━━━━━━━━━━━\n"
+        f"Level: {level}\n"
+        f"XP: {total_xp}\n"
+        f"Overall: {overall}%"
+    )
 
     await msg.reply(text)
-
-
