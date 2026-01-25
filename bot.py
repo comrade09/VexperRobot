@@ -38,6 +38,7 @@ class Bot(Client):
 
     async def start(self):
         await super().start()
+        self.loop.create_task(habit_watcher())
         usr_bot_me = await self.get_me()
         self.uptime = datetime.now()
 
