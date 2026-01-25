@@ -432,14 +432,20 @@ async def profile(_, msg):
 
         total_done += done
         total_days += total
+        goal = h.get("goal")
+
+        goal_text = f"{done}/{goal}" if goal else "Not set"
 
         text += (
-            f"📌 {h['habit']}\n"
-            f"Progress: {percent}%\n"
-            f"🔥 {cur} | 🏆 {best}\n"
-            f"XP: {xp}\n"
-            f"Badges: {badge_text}\n\n"
-        )
+    f"📌 {h['habit']}\n"
+    f"Progress: {percent}%\n"
+    f"🎯 Goal: {goal_text}\n"
+    f"🔥 {cur} | 🏆 {best}\n"
+    f"XP: {xp}\n"
+    f"Badges: {badge_text}\n\n"
+)
+
+
 
     level = calc_level(total_xp)
     overall = int((total_done / total_days) * 100) if total_days else 0
@@ -450,5 +456,253 @@ async def profile(_, msg):
         f"XP: {total_xp}\n"
         f"Overall: {overall}%"
     )
+
+    await msg.reply(text)
+# ================= WEEKLY =================
+
+@Bot.on_message(filters.command("weekly"),group=869433)
+async def weekly_report(_, msg):
+
+    uid = msg.from_user.id
+    habits = list(habits_col.find({"user_id": uid}))
+
+    if not habits:
+        return await msg.reply("No habits.")
+
+    today = date.today()
+    start = today - timedelta(days=6)
+
+    text = "📊 Weekly Report\n\n"
+
+    for h in habits:
+
+        cur, best = get_streaks(h["logs"])
+
+        done = miss = 0
+
+        for i in range(7):
+
+            d = start + timedelta(days=i)
+            val = h["logs"].get(str(d))
+
+            if val is True:
+                done += 1
+            elif val is False:
+                miss += 1
+
+        text += (
+            f"• {h['habit']}\n"
+            f"  🟢 {done}  🔴 {miss}  ⚪ {7-done-miss}\n"
+            f"  🔥 {cur}  🏆 {best}\n\n"
+        )
+
+    await msg.reply(text)
+
+
+# ================= HEATMAP =================
+
+@Bot.on_message(filters.command("heatmap"),group=869889545)
+async def heatmap(_, msg):
+
+    uid = msg.from_user.id
+    habits = list(habits_col.find({"user_id": uid}))
+
+    if not habits:
+        return await msg.reply("No habits.")
+
+    today = date.today()
+    start = today - timedelta(days=29)
+
+    text = "🔥 30-Day Heatmap\n\n"
+
+    for h in habits:
+
+        cur, best = get_streaks(h["logs"])
+
+        text += f"📌 {h['habit']} 🔥{cur} 🏆{best}\n"
+
+        row = ""
+
+        for i in range(30):
+
+            d = start + timedelta(days=i)
+            val = h["logs"].get(str(d))
+
+            if val is True:
+                row += "🟩"
+            elif val is False:
+                row += "🟥"
+            else:
+                row += "⬜"
+
+            if (i + 1) % 10 == 0:
+                row += "\n"
+
+        text += row + "\n\n"
+
+    await msg.reply(text)
+
+
+# ================= MONTH =================
+
+@Bot.on_message(filters.command("month"),group=86988942)
+async def month(_, msg):
+
+    uid = msg.from_user.id
+    habits = list(habits_col.find({"user_id": uid}))
+
+    if not habits:
+        return await msg.reply("No habits.")
+
+    today = date.today()
+    start = today - timedelta(days=29)
+
+    text = "📊 Monthly Stats\n\n"
+
+    for h in habits:
+
+        cur, best = get_streaks(h["logs"])
+
+        text += f"🏷️ {h['habit']} 🔥{cur} 🏆{best}\n"
+
+        line = ""
+
+        for i in range(30):
+
+            d = start + timedelta(days=i)
+            val = h["logs"].get(str(d))
+
+            if val is True:
+                icon = "🟢"
+            elif val is False:
+                icon = "🔴"
+            else:
+                icon = "⚪"
+
+            line += f"{d.day:02d}{icon}  "
+
+            if (i + 1) % 5 == 0:
+                line += "\n"
+
+        text += line + "\n\n"
+
+    await msg.reply(text)
+
+
+# ================= SINGLE HABIT =================
+
+@Bot.on_message(filters.command("habit"),group=8694343)
+async def habit_stats(_, msg):
+
+    if len(msg.command) < 2:
+        return await msg.reply("Use: /habit <name>")
+
+    name = " ".join(msg.command[1:]).lower()
+    uid = msg.from_user.id
+
+    habit = habits_col.find_one({
+        "user_id": uid,
+        "habit": {"$regex": f"^{name}$", "$options": "i"}
+    })
+
+    if not habit:
+        return await msg.reply("Habit not found.")
+
+    cur, best = get_streaks(habit["logs"])
+
+    today = date.today()
+    start = today - timedelta(days=29)
+
+    text = (
+        f"📅 {habit['habit']} (30 Days)\n"
+        f"🔥 Current: {cur}  🏆 Best: {best}\n\n"
+    )
+
+    for i in range(30):
+
+        d = start + timedelta(days=i)
+        val = habit["logs"].get(str(d))
+
+        if val is True:
+            icon = "🟢 Done"
+        elif val is False:
+            icon = "🔴 Missed"
+        else:
+            icon = "⚪ Not logged"
+
+        text += f"{d.strftime('%d %b %a')} → {icon}\n"
+
+    await msg.reply(text)
+
+
+# ================= DASHBOARD =================
+
+@Bot.on_message(filters.command("life"),group=765635355)
+async def dashboard(_, msg):
+
+    uid = msg.from_user.id
+    habits = list(habits_col.find({"user_id": uid}))
+
+    if not habits:
+        return await msg.reply("No habits.")
+
+    total = len(habits)
+    score = 0
+
+    text = "📊 Life Dashboard\n\n"
+
+    for h in habits:
+
+        cur, best = get_streaks(h["logs"])
+        score += cur
+
+        text += f"• {h['habit']} → 🔥{cur} 🏆{best}\n"
+
+    discipline = min(100, int((score / (total * 7)) * 100))
+
+    text += f"\n💯 Life Score: {discipline}/100"
+
+    await msg.reply(text)
+
+
+# ================= MONTHLY COMPARE =================
+
+@Bot.on_message(filters.command("compare"),group=894366)
+async def compare(_, msg):
+
+    uid = msg.from_user.id
+    habits = list(habits_col.find({"user_id": uid}))
+
+    if not habits:
+        return await msg.reply("No habits.")
+
+    today = date.today()
+
+    this_month = today.replace(day=1)
+    last_month = (this_month - timedelta(days=1)).replace(day=1)
+
+    text = "📈 Monthly Comparison\n\n"
+
+    for h in habits:
+
+        cur_m = 0
+        prev_m = 0
+
+        for d, v in h["logs"].items():
+
+            d = date.fromisoformat(d)
+
+            if v is True:
+
+                if d >= this_month:
+                    cur_m += 1
+
+                elif last_month <= d < this_month:
+                    prev_m += 1
+
+        diff = cur_m - prev_m
+        sign = "+" if diff >= 0 else ""
+
+        text += f"• {h['habit']}: {prev_m} → {cur_m} ({sign}{diff})\n"
 
     await msg.reply(text)
