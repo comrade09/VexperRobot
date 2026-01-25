@@ -27,7 +27,7 @@ habits_col = database["habits"]
 
 # ================= ADD HABIT =================
 
-@bot.on_message(filters.command("addhabit"))
+@bot.on_message(filters.command("addhabit"),group=56756)
 async def add_habit(_, msg):
 
     if len(msg.command) < 2:
@@ -52,7 +52,7 @@ async def add_habit(_, msg):
 
 # ================= /LOG =================
 
-@bot.on_message(filters.command("log"))
+@bot.on_message(filters.command("log"),group=5675976)
 async def log_menu(_, msg):
 
     uid = msg.from_user.id
@@ -77,7 +77,7 @@ async def log_menu(_, msg):
 
 # ================= SELECT HABIT =================
 
-@bot.on_callback_query(filters.regex("^log:"))
+@bot.on_callback_query(filters.regex("^log:"),group=56745256)
 async def select_habit(_, cq):
 
     hid = cq.data.split(":")[1]
@@ -127,7 +127,7 @@ async def select_habit(_, cq):
 
 # ================= MARK DAY =================
 
-@bot.on_callback_query(filters.regex("^mark:"))
+@bot.on_callback_query(filters.regex("^mark:"),group=5675536)
 async def mark_day(_, cq):
 
     _, hid, day = cq.data.split(":")
@@ -163,7 +163,7 @@ async def mark_day(_, cq):
 
 # ================= WEEKLY =================
 
-@bot.on_message(filters.command("weekly"))
+@bot.on_message(filters.command("weekly"),group=5676656)
 async def weekly_report(_, msg):
 
     uid = msg.from_user.id
@@ -202,7 +202,7 @@ async def weekly_report(_, msg):
 
 # ================= HEATMAP =================
 
-@bot.on_message(filters.command("heatmap"))
+@bot.on_message(filters.command("heatmap"),group=561298756)
 async def heatmap(_, msg):
 
     uid = msg.from_user.id
@@ -244,7 +244,7 @@ async def heatmap(_, msg):
 
 # ================= MONTH =================
 
-@bot.on_message(filters.command("month"))
+@bot.on_message(filters.command("month"),group=56436756)
 async def month(_, msg):
 
     uid = msg.from_user.id
@@ -288,7 +288,7 @@ async def month(_, msg):
 
 # ================= SINGLE HABIT =================
 
-@bot.on_message(filters.command("habit"))
+@bot.on_message(filters.command("habit"),group=567566767)
 async def habit_stats(_, msg):
 
     if len(msg.command) < 2:
