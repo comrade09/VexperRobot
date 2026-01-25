@@ -349,6 +349,71 @@ async def mark_day(_, cq):
         )
 
     await select_habit(_, cq)
+# ================= DELETE HABIT (BUTTON) =================
+
+@Bot.on_message(filters.command("delete"),group=756567)
+async def delete_menu(_, msg):
+
+    uid = msg.from_user.id
+
+    habits = list(habits_col.find({"user_id": uid}))
+
+    if not habits:
+        return await msg.reply("No habits to delete.")
+
+    buttons = []
+
+    for h in habits:
+        buttons.append([
+            InlineKeyboardButton(
+                f"🗑️ {h['habit']}",
+                f"del:{h['_id']}"
+            )
+        ])
+
+    await msg.reply(
+        "Select habit to delete:",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
+
+
+@Bot.on_callback_query(filters.regex("^del:"),group=75675)
+async def delete_confirm(_, cq):
+
+    hid = cq.data.split(":")[1]
+
+    habit = habits_col.find_one({"_id": ObjectId(hid)})
+
+    if not habit:
+        return await cq.answer("Not found")
+
+    buttons = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("❌ Cancel", "del_cancel"),
+            InlineKeyboardButton("✅ Delete", f"del_yes:{hid}")
+        ]
+    ])
+
+    await cq.message.edit(
+        f"⚠️ Delete **{habit['habit']}** ?\nThis cannot be undone.",
+        reply_markup=buttons
+    )
+
+
+@Bot.on_callback_query(filters.regex("^del_yes:"))
+async def delete_final(_, cq):
+
+    hid = cq.data.split(":")[1]
+
+    habits_col.delete_one({"_id": ObjectId(hid)})
+
+    await cq.message.edit("✅ Habit deleted.")
+
+
+@Bot.on_callback_query(filters.regex("^del_cancel"),group=8667)
+async def delete_cancel(_, cq):
+
+    await cq.message.edit("❌ Cancelled.")
 
 
 # ================= WEEKLY =================
