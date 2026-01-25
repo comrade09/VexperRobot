@@ -219,7 +219,7 @@ async def daily_check():
 
 # ================= ADD HABIT =================
 
-@Bot.on_message(filters.command("addhabit"))
+@Bot.on_message(filters.command("addhabit"),group=869889)
 async def add_habit(_, msg):
 
     if len(msg.command) < 2:
@@ -243,7 +243,7 @@ async def add_habit(_, msg):
 
 # ================= /LOG =================
 
-@Bot.on_message(filters.command("log"))
+@Bot.on_message(filters.command("log"),group=86988954)
 async def log_menu(_, msg):
 
     uid = msg.from_user.id
@@ -268,7 +268,7 @@ async def log_menu(_, msg):
 
 # ================= SELECT HABIT =================
 
-@Bot.on_callback_query(filters.regex("^log:"))
+@Bot.on_callback_query(filters.regex("^log:"),group=866569889)
 async def select_habit(_, cq):
 
     hid = cq.data.split(":")[1]
@@ -315,7 +315,7 @@ async def select_habit(_, cq):
 
 # ================= MARK DAY =================
 
-@Bot.on_callback_query(filters.regex("^mark:"))
+@Bot.on_callback_query(filters.regex("^mark:"),group=869535)
 async def mark_day(_, cq):
 
     _, hid, day = cq.data.split(":")
@@ -353,7 +353,7 @@ async def mark_day(_, cq):
 
 # ================= WEEKLY =================
 
-@Bot.on_message(filters.command("weekly"))
+@Bot.on_message(filters.command("weekly"),group=869433)
 async def weekly_report(_, msg):
 
     uid = msg.from_user.id
@@ -394,7 +394,7 @@ async def weekly_report(_, msg):
 
 # ================= HEATMAP =================
 
-@Bot.on_message(filters.command("heatmap"))
+@Bot.on_message(filters.command("heatmap"),group=869889545)
 async def heatmap(_, msg):
 
     uid = msg.from_user.id
@@ -438,7 +438,7 @@ async def heatmap(_, msg):
 
 # ================= MONTH =================
 
-@Bot.on_message(filters.command("month"))
+@Bot.on_message(filters.command("month"),group=86988942)
 async def month(_, msg):
 
     uid = msg.from_user.id
@@ -484,7 +484,7 @@ async def month(_, msg):
 
 # ================= SINGLE HABIT =================
 
-@Bot.on_message(filters.command("habit"))
+@Bot.on_message(filters.command("habit"),group=8694343)
 async def habit_stats(_, msg):
 
     if len(msg.command) < 2:
@@ -530,7 +530,7 @@ async def habit_stats(_, msg):
 
 # ================= DASHBOARD =================
 
-@Bot.on_message(filters.command("life"),group=765675)
+@Bot.on_message(filters.command("life"),group=765635355)
 async def dashboard(_, msg):
 
     uid = msg.from_user.id
@@ -560,7 +560,7 @@ async def dashboard(_, msg):
 
 # ================= MONTHLY COMPARE =================
 
-@Bot.on_message(filters.command("compare"),group=8966)
+@Bot.on_message(filters.command("compare"),group=894366)
 async def compare(_, msg):
 
     uid = msg.from_user.id
