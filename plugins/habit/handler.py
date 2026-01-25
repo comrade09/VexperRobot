@@ -244,7 +244,7 @@ async def delete_menu(_, msg):
     )
 
 
-@Bot.on_callback_query(filters.regex("^del:"),group=75675)
+@Bot.on_callback_query(filters.regex("^del:"),group=7565675)
 async def delete_confirm(_, cq):
 
     hid = cq.data.split(":")[1]
@@ -267,7 +267,7 @@ async def delete_confirm(_, cq):
     )
 
 
-@Bot.on_callback_query(filters.regex("^del_yes:"))
+@Bot.on_callback_query(filters.regex("^del_yes:"),group=786724434)
 async def delete_final(_, cq):
 
     hid = cq.data.split(":")[1]
