@@ -1,5 +1,6 @@
 from bot import Bot
-from plugins.habit.handlers import habit_watcher
+from plugins.habit.handler import habit_watcher
+
 
 
 Bot().run()
