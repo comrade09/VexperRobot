@@ -109,12 +109,12 @@ async def send_qbank_question(callback_query, chap_idx, q_idx):
             parse_mode=ParseMode.MARKDOWN
         )
 
-@Bot.on_callback_query(filters.regex(r"^qb_chap_(\d+)_(\d+)$"))
+@Bot.on_callback_query(filters.regex(r"^qb_chap_(\d+)_(\d+)$"),group=383872837)
 async def qb_nav_callback(bot: Bot, callback_query: CallbackQuery):
     chap_idx, q_idx = map(int, callback_query.matches[0].groups())
     await send_qbank_question(callback_query, chap_idx, q_idx)
 
-@Bot.on_callback_query(filters.regex(r"^qb_ans_(\d+)_(\d+)_([A-D])$"))
+@Bot.on_callback_query(filters.regex(r"^qb_ans_(\d+)_(\d+)_([A-D])$"),group=37673545)
 async def qb_answer_callback(bot: Bot, callback_query: CallbackQuery):
     chap_idx, q_idx, user_choice = callback_query.matches[0].groups()
     chap_idx, q_idx = int(chap_idx), int(q_idx)
