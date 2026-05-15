@@ -22,7 +22,7 @@ if os.path.exists(JSON_PATH):
 else:
     QBANK_DATA = {"chapters": []}
 
-@Bot.on_message(filters.command('qbank') & filters.private)
+@Bot.on_message(filters.command('qbank') & filters.private ,group=9898983)
 async def qbank_start(bot: Bot, message: Message):
     if not QBANK_DATA.get("chapters"):
         await message.reply_text("❌ **Error:** `qbank_data.json` not found or empty in the plugins folder.")
