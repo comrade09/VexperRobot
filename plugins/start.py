@@ -109,7 +109,7 @@ async def start_command(client: Client, message: Message):
         InlineKeyboardButton(text="Acess Contents", callback_data="help_cb")
     ],
     [
-        InlineKeyboardButton(text="About Me 📓", callback_data="about"),
+        InlineKeyboardButton(text="About Me 📓", callback_data="neet_countdown"),
         
     ],           
     [
