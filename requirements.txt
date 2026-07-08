@@ -10,3 +10,8 @@ aiohttp
 pytz
 humanize
 telethon
+pyrofork
+TgCrypto
+humanize
+motor
+dnspython
