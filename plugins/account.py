@@ -8,10 +8,7 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from bot import Bot
 
 # Adjusted import to match your project database structure
-from database.database import (
-    add_new_person, get_people, get_person_by_id, 
-    add_transaction, get_total_stats
-)
+from database.database import add_new_person, get_people, get_person_by_id, add_transaction, get_total_stats
 
 # In-memory session layout to track multi-step text actions
 USER_STATES = {}
@@ -66,7 +63,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
         people = await get_people(user_id)
         buttons = []
         row = []
-        
+    
         # Group names into 2 buttons per row
         for person in people:
             row.append(InlineKeyboardButton(person["name"], callback_data=f"view_person:{str(person['_id'])}"))
