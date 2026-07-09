@@ -1,5 +1,3 @@
-
-# accounts.py
 import os
 from datetime import datetime
 from pyrogram import Client, filters
@@ -7,13 +5,10 @@ from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from bot import Bot
 
-# Adjusted import to match your project database structure
 from database.database import add_new_person, get_people, get_person_by_id, add_transaction, get_total_stats
 
-# In-memory session layout to track multi-step text actions
 USER_STATES = {}
 
-# Main Menu Markups
 def main_menu_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📝 Log Entries", callback_data="menu_log")],
@@ -27,10 +22,10 @@ def main_menu_keyboard():
 #   COMMAND HANDLER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_message(filters.command(['myaccount', 'account']) & filters.private, group=2728973763763)
+@Bot.on_message(filters.command(['myaccount', 'account']) & filters.private, group=332332)
 async def my_account_hub(bot: Bot, message: Message):
     user_id = message.from_user.id
-    USER_STATES.pop(user_id, None) # Clear any hanging state configurations
+    USER_STATES.pop(user_id, None)
     
     await message.reply_text(
         text="🗂 **Account Management Dashboard**\n\nTrack splits, record active ledger variations, and view HTML statements seamlessly.",
@@ -42,7 +37,7 @@ async def my_account_hub(bot: Bot, message: Message):
 #   UNIFIED CALLBACK QUERY HANDLER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_callback_query(group=1373673)
+@Bot.on_callback_query(group=23345)
 async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
     data = cb.data
     if not data:
@@ -64,7 +59,6 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
         buttons = []
         row = []
         
-        # Group names into 2 buttons per row
         for person in people:
             row.append(InlineKeyboardButton(person["name"], callback_data=f"view_person:{str(person['_id'])}"))
             if len(row) == 2:
@@ -169,7 +163,6 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
             
         await cb.answer("Generating cyberpunk split dashboard...")
         
-        # Reference-inspired Dark Cyberpunk Layout UI
         html_raw = f"""<!DOCTYPE html>
         <html lang="en">
         <head>
@@ -177,7 +170,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>DIGITAL KENSEI LEDGER - {person['name'].upper()}</title>
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Ch克兰:wght@300;400;700&family=Inter:wght@300;400;600;800&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
                 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
                 body {{ 
                     font-family: 'Inter', sans-serif; 
@@ -285,14 +278,13 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
             os.remove(file_name)
             
     else:
-        # Pass the callback execution down to your main callback file
         cb.continue_propagation()
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #   TEXT STATE INTERCEPTOR PIPELINE
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_message(filters.private & filters.text, group=2728973)
+@Bot.on_message(filters.private & filters.text, group=32588)
 async def state_input_processor(bot: Bot, message: Message):
     if message.text.startswith("/"):
         return
@@ -328,10 +320,9 @@ async def state_input_processor(bot: Bot, message: Message):
         tx_type = current_session["tx_type"]
         
         if tx_type == "spent":
-            # Direct the engine to split sequence computation
             USER_STATES[user_id]["state"] = "awaiting_splits"
             USER_STATES[user_id]["amount"] = amount_val
-            await message.reply_text("🔢 Number of Splits: How many ways should this amount be split? (Enter `1` for no division):")
+            await message.reply_text("🔢 **Number of Splits:** How many ways should this amount be split? (Enter `1` for no division):")
         elif tx_type == "owed":
             USER_STATES[user_id]["state"] = "awaiting_reason"
             USER_STATES[user_id]["amount"] = amount_val
@@ -355,16 +346,15 @@ async def state_input_processor(bot: Bot, message: Message):
             if splits_val < 1:
                 raise ValueError
         except ValueError:
-            await message.reply_text("❌ Invalid Splits! Please enter a valid integer configuration count of 1 or greater:")
+            await message.reply_text("❌ **Invalid Splits!** Please enter a valid integer configuration count of 1 or greater:")
             return
             
         raw_amount = current_session["amount"]
-        # Split computing division calculation logic
         final_amount = raw_amount / splits_val
         
         USER_STATES[user_id]["state"] = "awaiting_reason"
         USER_STATES[user_id]["amount"] = final_amount
-        await message.reply_text("🔍 Allocation context: What was this money spent on? (e.g., grocery, milk, dahi):")
+        await message.reply_text("🔍 **Allocation context:** What was this money spent on? (e.g., *grocery, milk, dahi*):")
             
     elif state == "awaiting_reason":
         reason_input = message.text.strip()
