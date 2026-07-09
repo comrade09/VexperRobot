@@ -2,7 +2,7 @@ from telethon import TelegramClient
 from pyrogram import filters
 from bot import Bot
 from config import APP_ID, API_HASH, CHANNEL_ID, ADMINS
-from database.videos import add_video, count
+
 import os
 import asyncio
 from pyrogram import Client, filters
