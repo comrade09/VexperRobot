@@ -5,10 +5,16 @@ from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from bot import Bot
 
-from database.database import add_new_person, get_people, get_person_by_id, add_transaction, get_total_stats
+# Adjusted import to match your project structure
+from database.database import (
+    add_new_person, get_people, get_person_by_id, 
+    add_transaction, get_total_stats
+)
 
+# In-memory session layout to track multi-step text actions
 USER_STATES = {}
 
+# Main Menu Markups
 def main_menu_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📝 Log Entries", callback_data="menu_log")],
@@ -22,10 +28,10 @@ def main_menu_keyboard():
 #   COMMAND HANDLER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_message(filters.command(['myaccount', 'account']) & filters.private, group=332332)
+@Bot.on_message(filters.command(['myaccount', 'account']) & filters.private,group=1334887)
 async def my_account_hub(bot: Bot, message: Message):
     user_id = message.from_user.id
-    USER_STATES.pop(user_id, None)
+    USER_STATES.pop(user_id, None) # Clear any hanging state configurations
     
     await message.reply_text(
         text="🗂 **Account Management Dashboard**\n\nTrack splits, record active ledger variations, and view HTML statements seamlessly.",
@@ -37,7 +43,7 @@ async def my_account_hub(bot: Bot, message: Message):
 #   UNIFIED CALLBACK QUERY HANDLER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_callback_query(group=23345)
+@Bot.on_callback_query(group=133320)
 async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
     data = cb.data
     if not data:
@@ -59,6 +65,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
         buttons = []
         row = []
         
+        # Group names into 2 buttons per row
         for person in people:
             row.append(InlineKeyboardButton(person["name"], callback_data=f"view_person:{str(person['_id'])}"))
             if len(row) == 2:
@@ -71,7 +78,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
         buttons.append([InlineKeyboardButton("🔙 Back to Menu", callback_data="menu_main")])
         
         await cb.message.edit_text(
-            text="📝 **Person Ledger Logs** \n\nSelect an individual below to view or alter balances, or add a new log identity profile.",
+            text="📝 **Person Ledger Logs**\n\nSelect an individual below to view or alter balances, or add a new log identity profile.",
             reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode=ParseMode.MARKDOWN
         )
@@ -89,20 +96,22 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
         
         if stat_type == "spending":
             people = await get_people(user_id)
-            text = f"📊 **Global Spending Statistics**\n"
-            text += f"━━━━━━━━━━━━━━━━━━━\n"
-            text += f"💰 **Total Overall Spending:** ₹{total_spending:.2f}\n\n"
-            text += f"👥 **Person-wise Breakdown:**\n"
+            breakdown_text = ""
+            for person in people:
+                breakdown_text += f"• **{person['name']}**: ₹{person['spent']:.2f}\n"
             
-            if people:
-                for person in people:
-                    text += f"• `{person['name']}`: ₹{person['spent']:.2f}\n"
-            else:
-                text += "*No profiles recorded yet.*"
+            if not breakdown_text:
+                breakdown_text = "_No active spending records found._\n"
+
+            text = (
+                f"📊 **Global Spending Statistics**\n\n"
+                f"Total Aggregate Spending: **₹{total_spending:.2f}**\n"
+                f"━━━━━━━━━━━━━━━━━━━\n"
+                f"**Person-wise Spending Breakdown:**\n"
+                f"{breakdown_text}"
+            )
         else:
-            text = f"📉 **Global Debt Statistics**\n"
-            text += f"━━━━━━━━━━━━━━━━━━━\n"
-            text += f"💸 **Total Balance Payable:** ₹{total_debt:.2f}"
+            text = f"📉 **Global Debt Statistics**\n\nTotal current balance owed/payable across all profiles: **₹{total_debt:.2f}**"
             
         await cb.message.edit_text(
             text=text,
@@ -149,7 +158,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
         }
         
         await cb.message.edit_text(
-            text="💰 **Enter Amount**\n\nPlease enter the structural transaction value in INR (e.g., `45` or `500`):",
+            text="💰 **Enter Amount**\n\nPlease enter the total transaction value in INR (e.g., `45` or `500`):",
             parse_mode=ParseMode.MARKDOWN
         )
 
@@ -161,107 +170,173 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
             await cb.answer("No transactional metrics logged to construct a visual report for this profile yet.", show_alert=True)
             return
             
-        await cb.answer("Generating cyberpunk split dashboard...")
+        await cb.answer("Generating ledger spreadsheet report...")
         
         html_raw = f"""<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>DIGITAL KENSEI LEDGER - {person['name'].upper()}</title>
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-                * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-                body {{ 
-                    font-family: 'Inter', sans-serif; 
-                    background-color: #0b0b0c; 
-                    color: #ffffff; 
-                    padding: 40px 20px;
-                    background-image: linear-gradient(rgba(255, 42, 42, 0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 42, 42, 0.02) 1px, transparent 1px);
-                    background-size: 20px 20px;
-                }}
-                .container {{ max-width: 900px; margin: 0 auto; }}
-                .header {{ margin-bottom: 40px; position: relative; padding-bottom: 20px; border-bottom: 1px solid #1f1f24; }}
-                .brand {{ font-size: 11px; letter-spacing: 5px; color: #ff2a2a; text-transform: uppercase; font-weight: 800; margin-bottom: 8px; }}
-                .title {{ font-size: 32px; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase; }}
-                .grid-stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 40px; }}
-                .card {{ 
-                    background: #111112; 
-                    border: 1px solid #1f1f24; 
-                    padding: 24px; 
-                    border-radius: 4px;
-                    position: relative;
-                    overflow: hidden;
-                }}
-                .card::before {{
-                    content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: #ff2a2a;
-                }}
-                .card.owe-them::before {{ background: #ffffff; }}
-                .card-label {{ font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #8f8f93; margin-bottom: 10px; font-weight: 600; }}
-                .card-val {{ font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }}
-                .table-container {{ background: #111112; border: 1px solid #1f1f24; border-radius: 4px; overflow: hidden; }}
-                table {{ width: 100%; border-collapse: collapse; text-align: left; }}
-                th {{ background: #161618; color: #8f8f93; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; padding: 16px 20px; font-weight: 700; border-bottom: 1px solid #1f1f24; }}
-                td {{ padding: 16px 20px; font-size: 14px; border-bottom: 1px solid #19191b; color: #e1e1e3; }}
-                tr:last-child td {{ border-bottom: none; }}
-                tr:hover td {{ background: #161618; }}
-                .badge {{ display: inline-block; padding: 4px 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-radius: 2px; }}
-                .badge-spent {{ background: rgba(255, 42, 42, 0.1); color: #ff2a2a; border: 1px solid rgba(255, 42, 42, 0.2); }}
-                .badge-owed {{ background: rgba(255, 255, 255, 0.05); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.1); }}
-                .badge-they_paid {{ background: rgba(40, 167, 69, 0.1); color: #28a745; border: 1px solid rgba(40, 167, 69, 0.2); }}
-                .badge-i_sent {{ background: rgba(0, 123, 255, 0.1); color: #007bff; border: 1px solid rgba(0, 123, 255, 0.2); }}
-                .reason-text {{ font-weight: 500; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <div class="brand">SYSTEM METRICS // SPLIT SYSTEM</div>
-                    <div class="title">{person['name']}</div>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Split Ledger - {person['name']}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {{
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --primary: #4f46e5;
+            --spent-bg: #fee2e2; --spent-color: #991b1b;
+            --owed-bg: #ffedd5; --owed-color: #9a3412;
+            --paid-bg: #dcfce7; --paid-color: #166534;
+            --sent-bg: #dbeafe; --sent-color: #1e40af;
+        }}
+        body {{
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }}
+        .container {{
+            width: 100%;
+            max-width: 900px;
+        }}
+        .card {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }}
+        .card h2 {{
+            margin-top: 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }}
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }}
+        .stat-box {{
+            padding: 16px;
+            border-radius: 8px;
+            background-color: #f9fafb;
+            border: 1px solid var(--border-color);
+        }}
+        .stat-box span {{
+            display: block;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }}
+        .stat-box strong {{
+            font-size: 20px;
+            font-weight: 700;
+        }}
+        .table-wrapper {{
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f9fafb;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }}
+        td {{
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }}
+        tr:last-child td {{
+            border-bottom: none;
+        }}
+        tr:hover {{
+            background-color: #f9fafb;
+        }}
+        .badge {{
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+        }}
+        .type-spent {{ background: var(--spent-bg); color: var(--spent-color); }}
+        .type-owed {{ background: var(--owed-bg); color: var(--owed-color); }}
+        .type-they_paid {{ background: var(--paid-bg); color: var(--paid-color); }}
+        .type-i_sent {{ background: var(--sent-bg); color: var(--sent-color); }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>Transaction Split Report: {person['name']}</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span>They Owe You</span>
+                    <strong style="color: #059669;">₹{person['spent']:.2f}</strong>
                 </div>
-                
-                <div class="grid-stats">
-                    <div class="card">
-                        <div class="card-label">THEY OWE YOU (SPENT)</div>
-                        <div class="card-val">₹{person['spent']:.2f}</div>
-                    </div>
-                    <div class="card owe-them">
-                        <div class="card-label">YOU OWE THEM (DEBT)</div>
-                        <div class="card-val">₹{person['owed']:.2f}</div>
-                    </div>
+                <div class="stat-box">
+                    <span>You Owe Them</span>
+                    <strong style="color: #dc2626;">₹{person['owed']:.2f}</strong>
                 </div>
-
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date Time</th>
-                                <th>Operation Variant</th>
-                                <th>Value Allocation</th>
-                                <th>Reason Context</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+            </div>
+        </div>
+        
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Action</th>
+                        <th>Amount</th>
+                        <th>Reason / Allocation</th>
+                    </tr>
+                </thead>
+                <tbody>
         """
         
         for tx in person["transactions"]:
-            clean_type = tx['type'].replace('_', ' ').upper()
+            clean_type = tx['type'].replace('_', ' ').title()
             html_raw += f"""
-                            <tr>
-                                <td style="color: #8f8f93;">{tx['date']}</td>
-                                <td><span class="badge badge-{tx['type']}">{clean_type}</span></td>
-                                <td style="font-weight: 700;">₹{tx['amount']:.2f}</td>
-                                <td class="reason-text">{tx['reason']}</td>
-                            </tr>
+                    <tr>
+                        <td style="color: var(--text-muted);">{tx['date']}</td>
+                        <td><span class="badge type-{tx['type']}">{clean_type}</span></td>
+                        <td style="font-weight: 600;">₹{tx['amount']:.2f}</td>
+                        <td>{tx['reason']}</td>
+                    </tr>
             """
             
         html_raw += """
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </body>
-        </html>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
         """
         
         file_name = f"split_{person_id}.html"
@@ -271,7 +346,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
         await bot.send_document(
             chat_id=cb.message.chat.id,
             document=file_name,
-            caption=f"⚡️ **Digital Kensei Dashboard Engine rendered for {person['name']}**"
+            caption=f"📊 **Day-wise ledger breakdown report for {person['name']}**"
         )
         
         if os.path.exists(file_name):
@@ -284,7 +359,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
 #   TEXT STATE INTERCEPTOR PIPELINE
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_message(filters.private & filters.text, group=32588)
+@Bot.on_message(filters.private & filters.text, group=4531)
 async def state_input_processor(bot: Bot, message: Message):
     if message.text.startswith("/"):
         return
@@ -303,8 +378,7 @@ async def state_input_processor(bot: Bot, message: Message):
         
         await message.reply_text(
             text=f"✅ **Success!** Added **{name_input}** to log directory records.\n\nPress /myaccount to refresh active screens.",
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Go to Logs", callback_data="menu_log")]]),
-            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Go to Logs", callback_data="menu_log")]])
         )
         
     elif state == "awaiting_amount":
@@ -321,12 +395,14 @@ async def state_input_processor(bot: Bot, message: Message):
         
         if tx_type == "spent":
             USER_STATES[user_id]["state"] = "awaiting_splits"
-            USER_STATES[user_id]["amount"] = amount_val
-            await message.reply_text("🔢 **Number of Splits:** How many ways should this amount be split? (Enter `1` for no division):")
+            USER_STATES[user_id]["total_amount"] = amount_val
+            await message.reply_text("🔢 **Number of Splits:** How many people are splitting this amount? (Enter `1` if no split):")
+            
         elif tx_type == "owed":
             USER_STATES[user_id]["state"] = "awaiting_reason"
             USER_STATES[user_id]["amount"] = amount_val
             await message.reply_text("🔍 **Allocation context:** What was this money spent on? (e.g., *grocery, milk, dahi*):")
+            
         else:
             default_reason = "Repayment Settle" if tx_type == "they_paid" else "Funds Remittance"
             date_stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -336,26 +412,28 @@ async def state_input_processor(bot: Bot, message: Message):
             
             await message.reply_text(
                 text="✅ **Payment log adjustments adjusted successfully!**",
-                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 View Ledger Profile", callback_data=f"view_person:{person_id}")]]),
-                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 View Ledger Profile", callback_data=f"view_person:{person_id}")]])
             )
 
     elif state == "awaiting_splits":
         try:
-            splits_val = int(message.text.strip())
-            if splits_val < 1:
+            splits_count = int(message.text.strip())
+            if splits_count < 1:
                 raise ValueError
         except ValueError:
-            await message.reply_text("❌ **Invalid Splits!** Please enter a valid integer configuration count of 1 or greater:")
+            await message.reply_text("❌ **Invalid Split Number!** Please enter a positive whole number (e.g., `1`, `2`, `3`):")
             return
-            
-        raw_amount = current_session["amount"]
-        final_amount = raw_amount / splits_val
-        
+
+        total_amount = current_session["total_amount"]
+        final_amount = total_amount / splits_count if splits_count > 1 else total_amount
+
         USER_STATES[user_id]["state"] = "awaiting_reason"
         USER_STATES[user_id]["amount"] = final_amount
-        await message.reply_text("🔍 **Allocation context:** What was this money spent on? (e.g., *grocery, milk, dahi*):")
-            
+        
+        split_info = f" (Original Amount: ₹{total_amount:.2f} divided by {splits_count} = **₹{final_amount:.2f}**)" if splits_count > 1 else ""
+        
+        await message.reply_text(f"🔍 **Allocation context:** What was this money spent on?{split_info}\n(e.g., *grocery, milk, dahi*):")
+
     elif state == "awaiting_reason":
         reason_input = message.text.strip()
         person_id = current_session["person_id"]
@@ -367,6 +445,6 @@ async def state_input_processor(bot: Bot, message: Message):
         USER_STATES.pop(user_id, None)
         
         await message.reply_text(
-            text="✅ **Ledger configuration values added successfully!**",
+            text="✅ **Ledger ledger configuration values added successfully!**",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 View Updated Totals", callback_data=f"view_person:{person_id}")]])
         )
