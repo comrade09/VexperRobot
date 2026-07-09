@@ -6,10 +6,7 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from bot import Bot
 
 # Adjusted import to match your project structure
-from database.database import (
-    add_new_person, get_people, get_person_by_id, 
-    add_transaction, get_total_stats
-)
+from database.database import add_new_person, get_people, get_person_by_id,  add_transaction, get_total_stats
 
 # In-memory session layout to track multi-step text actions
 USER_STATES = {}
