@@ -60,7 +60,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
 
     elif data == "menu_log":
         USER_STATES.pop(user_id, None)
-        people = await get_people(user_id)
+        people = get_people(user_id)
         buttons = []
         row = []
     
