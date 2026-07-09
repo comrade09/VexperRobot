@@ -8,7 +8,7 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from bot import Bot
 
 # Adjusted import to match your project database structure
-from database.database import add_new_person, get_people, get_person_by_id, add_transaction, get_total_stats
+from database.database import add_new_person,get_people,get_person_by_id, add_transaction, get_total_stats
 
 # In-memory session layout to track multi-step text actions
 USER_STATES = {}
@@ -27,7 +27,7 @@ def main_menu_keyboard():
 #   COMMAND HANDLER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_message(filters.command(['myaccount', 'account']) & filters.private, group=2728973763763)
+@Bot.on_message(filters.command(['myaccount', 'account']) & filters.private, group=27289443763763)
 async def my_account_hub(bot: Bot, message: Message):
     user_id = message.from_user.id
     USER_STATES.pop(user_id, None) # Clear any hanging state configurations
@@ -42,7 +42,7 @@ async def my_account_hub(bot: Bot, message: Message):
 #   UNIFIED CALLBACK QUERY HANDLER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_callback_query(group=1373673)
+@Bot.on_callback_query(group=1373222673)
 async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
     data = cb.data
     if not data:
@@ -60,7 +60,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
 
     elif data == "menu_log":
         USER_STATES.pop(user_id, None)
-        people = get_people(user_id)
+        people = await get_people(user_id)
         buttons = []
         row = []
     
