@@ -7,7 +7,10 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from bot import Bot
 
 # Adjusted import to match your project structure
-from database.database import add_new_person, get_people, get_person_by_id, add_transaction, get_total_stats
+from database.database import (
+    add_new_person, get_people, get_person_by_id, 
+    add_transaction, get_total_stats
+)
 
 # In-memory session layout to track multi-step text actions
 USER_STATES = {}
@@ -26,7 +29,7 @@ def main_menu_keyboard():
 #   COMMAND HANDLER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_message(filters.command(['myaccount', 'account']) & filters.private,group=28209)
+@Bot.on_message(filters.command(['myaccount', 'account']) & filters.private,group=26528)
 async def my_account_hub(bot: Bot, message: Message):
     user_id = message.from_user.id
     USER_STATES.pop(user_id, None) # Clear any hanging state configurations
@@ -41,7 +44,7 @@ async def my_account_hub(bot: Bot, message: Message):
 #   UNIFIED CALLBACK QUERY HANDLER
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_callback_query(group=103287)
+@Bot.on_callback_query(group=13652)
 async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
     data = cb.data
     if not data:
@@ -157,141 +160,29 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
         await cb.answer("Generating ledger spreadsheet report...")
         
         html_raw = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Split Ledger - {person['name']}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {{
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }}
-        body {{
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: #f8fafc;
-            color: #0f172a;
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
-        }}
-        .container {{
-            width: 100%;
-            max-width: 900px;
-        }}
-        .header {{
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }}
-        .header h2 {{
-            font-size: 22px;
-            font-weight: 700;
-            color: #0f172a;
-            letter-spacing: -0.02em;
-        }}
-        .badge-user {{
-            background: #e2e8f0;
-            color: #475569;
-            padding: 6px 14px;
-            border-radius: 9999px;
-            font-size: 13px;
-            font-weight: 600;
-        }}
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 16px;
-            margin-bottom: 28px;
-        }}
-        .card {{
-            background: #ffffff;
-            padding: 20px 24px;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
-        }}
-        .card-title {{
-            font-size: 12px;
-            font-weight: 600;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 8px;
-        }}
-        .card-amount {{
-            font-size: 26px;
-            font-weight: 700;
-        }}
-        .amount-green {{ color: #16a34a; }}
-        .amount-orange {{ color: #ea580c; }}
-
-        .table-card {{
-            background: #ffffff;
-            border-radius: 16px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
-            overflow: hidden;
-        }}
-        table {{
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }}
-        th {{
-            background-color: #f8fafc;
-            padding: 14px 20px;
-            font-size: 12px;
-            font-weight: 600;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid #e2e8f0;
-        }}
-        td {{
-            padding: 16px 20px;
-            font-size: 14px;
-            color: #334155;
-            border-bottom: 1px solid #f1f5f9;
-        }}
-        tr:last-child td {{
-            border-bottom: none;
-        }}
-        tr:hover td {{
-            background-color: #f8fafc;
-        }}
-
-        /* Soft Badge Tags for Transaction Types */
-        .type-spent {{ background: #fef2f2; color: #dc2626; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }}
-        .type-owed {{ background: #fff7ed; color: #ea580c; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }}
-        .type-they_paid {{ background: #f0fdf4; color: #16a34a; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }}
-        .type-i_sent {{ background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2>Transaction Split Report</h2>
-            <span class="badge-user">{person['name']}</span>
-        </div>
-
-        <div class="stats-grid">
+        <html>
+        <head>
+            <title>Split Ledger - {person['name']}</title>
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f8f9fa; color: #212529; }}
+                h2 {{ color: #495057; border-bottom: 2px solid #dee2e6; padding-bottom: 10px; }}
+                .card {{ background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 15px; background: #fff; }}
+                th, td {{ padding: 12px 15px; text-align: left; border-bottom: 1px solid #dee2e6; }}
+                th {{ background-color: #6c757d; color: white; text-transform: uppercase; font-size: 13px; }}
+                tr:hover {{ background-color: #f1f3f5; }}
+                .type-spent {{ color: #dc3545; font-weight: 600; }}
+                .type-owed {{ color: #fd7e14; font-weight: 600; }}
+                .type-they_paid {{ color: #28a745; font-weight: 600; }}
+                .type-i_sent {{ color: #007bff; font-weight: 600; }}
+            </style>
+        </head>
+        <body>
             <div class="card">
-                <div class="card-title">They owe you</div>
-                <div class="card-amount amount-green">INR {person['spent']:.2f}</div>
+                <h2>Transaction Split Report: {person['name']}</h2>
+                <p><strong>They owe you:</strong> INR {person['spent']:.2f}</p>
+                <p><strong>You owe them:</strong> INR {person['owed']:.2f}</p>
             </div>
-            <div class="card">
-                <div class="card-title">You owe them</div>
-                <div class="card-amount amount-orange">INR {person['owed']:.2f}</div>
-            </div>
-        </div>
-
-        <div class="table-card">
             <table>
                 <thead>
                     <tr>
@@ -302,7 +193,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
                     </tr>
                 </thead>
                 <tbody>
-"""
+        """
         
         for tx in person["transactions"]:
             clean_type = tx['type'].replace('_', ' ').title()
@@ -343,7 +234,7 @@ async def accounts_callback_handler(bot: Bot, cb: CallbackQuery):
 #   TEXT STATE INTERCEPTOR PIPELINE
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@Bot.on_message(filters.private & filters.text, group=1525)
+@Bot.on_message(filters.private & filters.text, group=7832)
 async def state_input_processor(bot: Bot, message: Message):
     if message.text.startswith("/"):
         return
