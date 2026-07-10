@@ -1,7 +1,7 @@
 import os
 import asyncio
 import random
-import google.generativeai as genai
+import google.genai as genai
 from pyrogram import filters, enums
 from pyrogram.enums import ParseMode
 from pyrogram.types import Message
