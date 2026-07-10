@@ -13,7 +13,7 @@ from bot import Bot # Assuming this is your custom Client instance
 # ==========================================
 
 # Configure the Google Gemini AI Model
-genai.configure(api_key="YOUR_GEMINI_API_KEY") # 🔴 PASTE YOUR API KEY HERE
+genai.configure(api_key="AQ.Ab8RN6KQCyHQgfotIR58PGbdEnXVKWntLiLfUlxoPn1zuKiSjQ") # 🔴 PASTE YOUR API KEY HERE
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 ELP_LINK = "https://t.me/+0YrmrOzS40wzYTU1"
