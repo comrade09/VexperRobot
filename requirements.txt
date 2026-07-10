@@ -16,3 +16,4 @@ humanize
 motor
 dnspython
 google-genai
+openai
