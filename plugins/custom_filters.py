@@ -7,13 +7,13 @@ from pyrogram.enums import ParseMode
 from pyrogram.types import Message
 from bot import Bot # Assuming this is your custom Client instance
 # from config import OWNER_ID, BOT_USERNM # Un-comment if you need these later
-
+from config import GEMINI
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
 
 # Configure the Google Gemini AI Model
-genai.configure(api_key="AQ.Ab8RN6KQCyHQgfotIR58PGbdEnXVKWntLiLfUlxoPn1zuKiSjQ") # 🔴 PASTE YOUR API KEY HERE
+genai.configure(api_key=GEMINI)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 ELP_LINK = "https://t.me/+0YrmrOzS40wzYTU1"
