@@ -77,7 +77,7 @@ async def generate_dynamic_reply(trigger_word: str, user_text: str) -> str:
     try:
         # Using the NEW SDK's async method (client.aio)
         response = await client.aio.models.generate_content(
-            model='gemini-1.0-flash-latest', 
+            model='gemini-1.5-flash-latest', 
             contents=prompt
         )
         return response.text.strip()
