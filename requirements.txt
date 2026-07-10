@@ -15,4 +15,4 @@ TgCrypto
 humanize
 motor
 dnspython
-google-generativeai>=0.5.2
+google-genai
