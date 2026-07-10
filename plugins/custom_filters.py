@@ -1,40 +1,29 @@
 import os
 import asyncio
 import random
-import google.genai as genai
 from pyrogram import filters, enums
 from pyrogram.enums import ParseMode
 from pyrogram.types import Message
-from bot import Bot # Assuming this is your custom Client instance
-# from config import OWNER_ID, BOT_USERNM # Un-comment if you need these later
-from config import GEMINI
+from bot import Bot
+from config import GEMINI # Importing your key from config like a pro
+
 # ==========================================
-# 1. CONFIGURATION
+# 1. CONFIGURATION (NEW SDK)
 # ==========================================
 
-# Configure the Google Gemini AI Model
-genai.configure(api_key=GEMINI)
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
+# Import the new SDK
+from google import genai
+
+# Initialize the new Client
+# (You don't need to define the model here anymore, you pass it in the function)
+client = genai.Client(api_key=GEMINI) 
 
 ELP_LINK = "https://t.me/+0YrmrOzS40wzYTU1"
 
-# Dictionary to keep track of message counts per chat
-group_message_counters = {}
-
-# Dictionary holding fallback stickers for triggers
-trigger_responses = {
-    "thank": {"sticker_id": "CAACAgUAAxkBAAIM2WVuXSKjb5hD7Ira3MNtHkQvvfyLAALFEQACFORxV6azoG5YB84EHgQ"},
-    "thanks": {"sticker_id": "CAACAgUAAxkBAAIM2WVuXSKjb5hD7Ira3MNtHkQvvfyLAALFEQACFORxV6azoG5YB84EHgQ"},
-    "elp": {"sticker_id": "YOUR_ELP_STICKER_ID"},     # 🔴 ADD YOUR STICKER IDs HERE
-    "hello": {"sticker_id": "YOUR_HELLO_STICKER_ID"},
-    "hi": {"sticker_id": "YOUR_HI_STICKER_ID"},
-    "sorry": {"sticker_id": "YOUR_SORRY_STICKER_ID"},
-    "gm": {"sticker_id": "YOUR_GM_STICKER_ID"},
-    "gn": {"sticker_id": "YOUR_GN_STICKER_ID"}
-}
+# [Keep your group_message_counters and trigger_responses dictionaries here exactly as they were]
 
 # ==========================================
-# 2. AI GENERATION FUNCTION
+# 2. AI GENERATION FUNCTION (UPDATED)
 # ==========================================
 
 async def generate_dynamic_reply(trigger_word: str, user_text: str) -> str:
@@ -71,81 +60,14 @@ async def generate_dynamic_reply(trigger_word: str, user_text: str) -> str:
         """
     
     try:
-        # Use native async AI generation
-        response = await model.generate_content_async(prompt)
+        # NEW SDK Syntax: Using client.aio for async calls
+        response = await client.aio.models.generate_content(
+            model='gemini-1.5-flash', # You can also upgrade to 'gemini-2.0-flash' here if you want!
+            contents=prompt
+        )
         return response.text.strip()
     except Exception as e:
         print(f"AI Generation Error: {e}")
         return "Bhai, mera network thoda slow chal raha hai. Thodi der mein aana! 😵‍💫"
 
-# ==========================================
-# 3. BACKGROUND DELETION HELPER
-# ==========================================
-
-async def delete_after_delay(message: Message, delay: int):
-    """Deletes a message after a specified delay without blocking the bot."""
-    await asyncio.sleep(delay)
-    try:
-        await message.delete()
-    except Exception as e:
-        print(f"Failed to delete message (it might have been deleted manually): {e}")
-
-# ==========================================
-# 4. MESSAGE HANDLER
-# ==========================================
-
-@Bot.on_message(filters.chat(-1001325358566))
-async def handle_messages(client, message: Message):
-    if not message.text:
-        return
-
-    chat_id = message.chat.id
-    
-    # 1. Update counter
-    if chat_id not in group_message_counters:
-        group_message_counters[chat_id] = 0
-    group_message_counters[chat_id] += 1
-    current_count = group_message_counters[chat_id]
-    
-    msg_words = message.text.lower().split()
-    triggered = False
-    
-    # 2. Check Triggers
-    for trigger_word, response_data in trigger_responses.items():
-        if trigger_word.lower() in msg_words:
-            triggered = True
-            
-            # 50% chance for text, 50% chance for sticker
-            send_text = random.choice([True, False])
-
-            if send_text:
-                try:
-                    await client.send_chat_action(chat_id, enums.ChatAction.TYPING)
-                    chosen_text = await generate_dynamic_reply(trigger_word, message.text)
-                    m = await message.reply_text(chosen_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
-                    
-                    # Schedule deletion in the background
-                    asyncio.create_task(delete_after_delay(m, 60))
-                except Exception as e:
-                    print(f"Error sending text reply: {e}")
-            else:
-                sticker_id = response_data.get("sticker_id", "")
-                if sticker_id:
-                    try:
-                        await message.reply_sticker(sticker_id)
-                    except Exception as e:
-                        print(f"Error sending sticker: {e}")
-            
-            break # Stop after finding the first trigger word
-
-    # 3. 100th Message Logic
-    if not triggered and current_count % 100 == 0:
-        try:
-            await client.send_chat_action(chat_id, enums.ChatAction.TYPING)
-            chosen_text = await generate_dynamic_reply("random_100", message.text)
-            m = await message.reply_text(chosen_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
-            
-            # Schedule deletion in the background
-            asyncio.create_task(delete_after_delay(m, 60))
-        except Exception as e:
-             print(f"Error on 100th message generation: {e}")
+# [Keep your background deletion helper and message handler exactly as they were]
