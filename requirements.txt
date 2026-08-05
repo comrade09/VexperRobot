@@ -17,3 +17,5 @@ motor
 dnspython
 google-genai
 openai
+selenium
+webdriver-manager
