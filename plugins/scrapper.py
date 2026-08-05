@@ -37,7 +37,6 @@ def setup_driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-    # Added modern User-Agent to prevent bot detection / blocking
     options.add_argument(
         "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -48,11 +47,18 @@ def setup_driver():
 
 
 def run_selenium_scraper(batch_url: str):
+    # Sanitize incoming batch_url string (strips backticks, quotes, and whitespace)
+    batch_url = batch_url.strip("`'\" \t\n\r")
+
     driver = setup_driver()
 
-    # Extract batch_id safely
-    batch_id_match = re.search(r"batch_id=([a-zA-Z0-9_%-]+)", batch_url)
+    # Clean batch_id extraction (strictly captures alphanumeric characters)
+    batch_id_match = re.search(r"batch_id=([a-zA-Z0-9]+)", batch_url)
     batch_id = batch_id_match.group(1) if batch_id_match else "Unknown"
+
+    # Reconstruct clean batch_url to prevent navigating to malformed URLs
+    if batch_id != "Unknown":
+        batch_url = f"https://studyuk.online/offline/batch-details.php?batch_id={batch_id}"
 
     driver.get(batch_url)
 
@@ -93,7 +99,7 @@ def run_selenium_scraper(batch_url: str):
         target = href if "teacher-detail.php" in href else onclick
         
         if target:
-            match = re.search(r"teacher=([^'\"\s&]+)", target)
+            match = re.search(r"teacher=([^'\"\s&`]+)", target)
             if match:
                 teacher_param = match.group(1)
                 t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={teacher_param}"
@@ -103,7 +109,7 @@ def run_selenium_scraper(batch_url: str):
     # 5. Regex Fallback: Search direct page HTML if DOM elements were missed
     if not teacher_urls:
         page_source = driver.page_source
-        matches = re.findall(r"teacher-detail\.php\?[^'\"\s>]*teacher=([^'\"\s&<>]+)", page_source)
+        matches = re.findall(r"teacher-detail\.php\?[^'\"\s>]*teacher=([^'\"\s&<>`]+)", page_source)
         for t_param in set(matches):
             t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={t_param}"
             if t_url not in teacher_urls:
@@ -132,7 +138,7 @@ def run_selenium_scraper(batch_url: str):
                 By.XPATH, "//div[contains(@class, 'teacher')]//h2 | //h1 | //h2"
             ).text.strip()
         except Exception:
-            t_param = re.search(r"teacher=([^&]+)", teacher_url)
+            t_param = re.search(r"teacher=([^&`]+)", teacher_url)
             teacher_name = unquote(t_param.group(1)).replace("+", " ") if t_param else "Teacher"
 
         # Lecture Cards
@@ -218,7 +224,8 @@ async def handle_admin_text(bot: Bot, message: Message):
     state = user_states.get(user_id)
 
     if state == "WAITING_FOR_BATCH_URL":
-        url = message.text.strip()
+        # Strip backticks or quotes if passed accidentally by admin
+        url = message.text.strip("`'\" \t\n\r")
         if "batch_id=" not in url:
             await message.reply_text("❌ Invalid link! Must contain `batch_id=` parameter.")
             return
@@ -229,11 +236,12 @@ async def handle_admin_text(bot: Bot, message: Message):
         try:
             batch_id, batch_title, teachers_data = await asyncio.to_thread(run_selenium_scraper, url)
             
-            # Save scraped data to MongoDB
+            # Save scraped data to MongoDB using clean batch_url
+            clean_url = f"https://studyuk.online/offline/batch-details.php?batch_id={batch_id}"
             await update_batch_data(
                 batch_id=batch_id,
                 batch_title=batch_title,
-                batch_url=url,
+                batch_url=clean_url,
                 teachers=teachers_data,
                 last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
@@ -296,10 +304,11 @@ async def cb_handler(bot: Bot, query: CallbackQuery):
         try:
             b_id, title, teachers_data = await asyncio.to_thread(run_selenium_scraper, batch['batch_url'])
             
+            clean_url = f"https://studyuk.online/offline/batch-details.php?batch_id={b_id}"
             await update_batch_data(
                 batch_id=b_id,
                 batch_title=title,
-                batch_url=batch['batch_url'],
+                batch_url=clean_url,
                 teachers=teachers_data,
                 last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
