@@ -66,11 +66,11 @@ async def handle_json_file(client: Bot, message: Message):
                         
         await msg.edit_text(
             "✅ Database updated successfully! All new and previous links have been merged and sorted.",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.HTML
         )
         
     except Exception as e:
-        await msg.edit_text(f"❌ Error parsing JSON: `{str(e)}`", parse_mode=ParseMode.MARKDOWN)
+        await msg.edit_text(f"❌ Error parsing JSON: <code>{str(e)}</code>", parse_mode=ParseMode.HTML)
     finally:
         UPLOAD_STATE[message.from_user.id] = False
         if os.path.exists(file_path):
@@ -92,12 +92,12 @@ async def batches_command(client: Bot, message: Message):
         buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}")])
     
     await message.reply_text(
-        "📚 **Select a Batch:**",
+        "📚 <b>Select a Batch:</b>",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
 
-# --- 3. Teachers Menu (2 Rows) ---
+# --- 3. Teachers Menu (2 Rows Array) ---
 @Bot.on_callback_query(filters.regex(r"^bch_(.*)"), group=3653)
 async def show_teachers(client: Bot, callback_query: CallbackQuery):
     batch_id = callback_query.matches[0].group(1)
@@ -114,7 +114,7 @@ async def show_teachers(client: Bot, callback_query: CallbackQuery):
         clean_name = raw_name.split("\n")[0].strip()
         teacher_buttons.append(InlineKeyboardButton(clean_name, callback_data=f"tch_{batch_id}_{idx}_0"))
     
-    # Group them into pairs (2 buttons per row)
+    # Group them into columns of TWO
     buttons = []
     for i in range(0, len(teacher_buttons), 2):
         buttons.append(teacher_buttons[i:i+2])
@@ -125,9 +125,9 @@ async def show_teachers(client: Bot, callback_query: CallbackQuery):
     batch_name = BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id))
 
     await callback_query.message.edit_text(
-        f"👨‍🏫 **Teachers for {batch_name}:**\nSelect a teacher to view their classes.",
+        f"👨‍🏫 <b>Teachers for {batch_name}:</b>\nSelect a teacher to view their classes.",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
 
 @Bot.on_callback_query(filters.regex(r"^back_to_batches$"), group=4763)
@@ -140,9 +140,9 @@ async def back_to_batches_callback(client: Bot, callback_query: CallbackQuery):
         buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}")])
         
     await callback_query.message.edit_text(
-        "📚 **Select a Batch:**",
+        "📚 <b>Select a Batch:</b>",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
 
 # --- 4. Lectures Menu (Paginated, Sorted & Safe URLs) ---
@@ -168,11 +168,13 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
         return await callback_query.answer("No lectures found.", show_alert=True)
 
     batch_name = BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id))
-    text = f"**📖 Lectures by {teacher_name}**\n**Batch:** {batch_name}\n\n"
+    
+    # Using HTML for safer text rendering
+    text = f"<b>📖 Lectures by {teacher_name}</b>\n<b>Batch:</b> {batch_name}\n\n"
     
     for lec in page_lectures:
-        text += f"🗓 **Date:** `{lec.get('date', 'Unknown')}`\n"
-        text += f"📝 **Title:** `{lec.get('lecture_title', 'Untitled')}`\n"
+        text += f"🗓 <b>Date:</b> <code>{lec.get('date', 'Unknown')}</code>\n"
+        text += f"📝 <b>Title:</b> <code>{lec.get('lecture_title', 'Untitled')}</code>\n"
         
         # Safely extract URLs
         vid_url = lec.get("video_url", "")
@@ -180,16 +182,16 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
         
         links = []
         if vid_url and vid_url.startswith("http"):
-            links.append(f"🎬 [Watch Video]({vid_url})")
+            links.append(f"🎬 <a href='{vid_url}'>Watch Video</a>")
         
         if pdf_url and pdf_url.startswith("http"):
-            links.append(f"📥 [Download PDF]({pdf_url})")
+            links.append(f"📥 <a href='{pdf_url}'>Download PDF</a>")
             
         # Add links to text if they exist
         if links:
             text += " | ".join(links) + "\n\n"
         else:
-            text += "🚫 *No links available*\n\n"
+            text += "🚫 <i>No links available</i>\n\n"
         
     # Navigation Buttons
     nav_buttons = []
@@ -208,5 +210,5 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
         text,
         reply_markup=InlineKeyboardMarkup(buttons),
         disable_web_page_preview=True,
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
