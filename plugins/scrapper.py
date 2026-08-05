@@ -162,7 +162,7 @@ def scrape_single_batch(batch_url):
 
 # --- Bot Handler ---
 
-@Bot.on_message(filters.command("scrape"))
+@Bot.on_message(filters.command("scrape")group=8838)
 async def handle_scrape(client: Bot, message: Message):
     if len(message.command) < 2:
         await message.reply_text("⚠️ **Usage:** `/scrape <batch_url>`")
