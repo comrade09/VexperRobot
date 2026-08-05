@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import random
 import asyncio
 import html as html_mod
 from urllib.parse import unquote
@@ -12,13 +13,24 @@ from pyrogram import filters
 from pyrogram.types import Message
 from bot import Bot  # Matches your existing bot import
 
+# Optional: solves Cloudflare JS challenges (pip install cloudscraper).
+# Falls back to plain requests if not installed.
+try:
+    import cloudscraper
+    _cf_scraper = cloudscraper.create_scraper(
+        browser={"browser": "chrome", "platform": "windows", "desktop": True},
+    )
+except Exception:
+    _cf_scraper = None
+
 BASE = "https://studyuk.online/offline"
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-}
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+]
 
 
 # ==========================================
@@ -30,23 +42,62 @@ def _clean_text(s):
     return re.sub(r"\s+", " ", s).strip()
 
 
-def _fetch(url, timeout=30):
-    resp = requests.get(url, headers=HEADERS, timeout=timeout)
-    if resp.status_code != 200:
-        raise RuntimeError(f"HTTP {resp.status_code} for {url}")
-    if "Just a moment" in resp.text[:600]:
-        raise RuntimeError(f"Cloudflare challenge for {url}")
-    return resp.text
+def _browser_headers(referer=None):
+    headers = {
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    if referer:
+        headers["Referer"] = referer
+    return headers
 
 
-def _fetch_with_retry(url, tries=3, timeout=30):
+def _is_challenge(text):
+    head = text[:2000].lower()
+    return ("just a moment" in head
+            or "cf-browser-verification" in head
+            or "cf-chl" in head
+            or "enable javascript and cookies" in head)
+
+
+def _fetch(url, timeout=30, referer=None, tries=4):
     last = None
-    for i in range(tries):
+    for attempt in range(tries):
+        headers = _browser_headers(referer)
         try:
-            return _fetch(url, timeout=timeout)
-        except Exception as e:
+            if _cf_scraper is not None:
+                resp = _cf_scraper.get(url, headers=headers, timeout=timeout)
+            else:
+                resp = requests.get(url, headers=headers, timeout=timeout)
+
+            if resp.status_code in (403, 429, 503):
+                last = RuntimeError(f"HTTP {resp.status_code} for {url} (blocked/rate-limited)")
+                time.sleep(random.uniform(3, 7) * (attempt + 1))
+                continue
+
+            if resp.status_code != 200:
+                raise RuntimeError(f"HTTP {resp.status_code} for {url}")
+
+            if _is_challenge(resp.text):
+                last = RuntimeError(f"Cloudflare challenge for {url}")
+                time.sleep(random.uniform(4, 9) * (attempt + 1))
+                continue
+
+            return resp.text
+        except requests.exceptions.RequestException as e:
             last = e
-            time.sleep(1.5 * (i + 1))
+            time.sleep(random.uniform(2, 5) * (attempt + 1))
     raise last
 
 
@@ -87,8 +138,8 @@ def parse_teacher_urls(batch_html):
     return urls
 
 
-def parse_teacher_page(url):
-    page = _fetch_with_retry(url)
+def parse_teacher_page(url, batch_page_url):
+    page = _fetch(url, referer=batch_page_url)
     page = re.sub(r"<!--.*?-->", "", page, flags=re.S)
 
     name_m = re.search(r'<h1 class="teacher-title">([^<]*)</h1>', page)
@@ -138,7 +189,7 @@ def scrape_single_batch(batch_url):
     batch_title = titles.get(batch_id, f"Batch_{batch_id}")
     safe_batch_title = re.sub(r'[\\/*?:"<>|]', "_", batch_title)
 
-    html = _fetch_with_retry(clean_url)
+    html = _fetch(clean_url)
     teacher_urls = parse_teacher_urls(html)
     if not teacher_urls:
         raise RuntimeError("No teacher links found (page blocked or batch has no teachers)")
@@ -153,10 +204,10 @@ def scrape_single_batch(batch_url):
     errors = []
     for t_idx, teacher_url in enumerate(teacher_urls, 1):
         try:
-            batch_data["teachers"].append(parse_teacher_page(teacher_url))
+            batch_data["teachers"].append(parse_teacher_page(teacher_url, clean_url))
         except Exception as e:
             errors.append(f"{unquote(teacher_url.split('teacher=')[-1])[:30]}: {e}")
-        time.sleep(0.8)
+        time.sleep(random.uniform(0.8, 2.5))
 
     if not batch_data["teachers"]:
         raise RuntimeError("All teacher pages failed: " + "; ".join(errors))
