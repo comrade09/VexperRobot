@@ -1,5 +1,6 @@
 import os
 import json
+import html
 from datetime import datetime
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -19,12 +20,12 @@ BATCH_MAP = {
     "0KFLQAGZ": "Master Pro 3"
 }
 
-# --- Helper to prevent Markdown crashes ---
-def safe_md(text):
-    """Removes underscores and asterisks from JSON text so standard Markdown doesn't crash."""
+# --- Helper to prevent HTML format crashes ---
+def safe_html(text):
+    """Escapes special characters (<, >, &) so they don't break HTML parsing."""
     if not text:
         return ""
-    return str(text).replace("_", " ").replace("*", "")
+    return html.escape(str(text))
 
 # --- 1. JSON Update Command ---
 @Bot.on_message(filters.command("update") & filters.private & filters.user(OWNER_ID), group=9253)
@@ -72,11 +73,11 @@ async def handle_json_file(client: Bot, message: Message):
                         
         await msg.edit_text(
             "✅ Database updated successfully! All new and previous links have been merged and sorted.",
-            parse_mode=ParseMode.MARKDOWN
+            parse_mode=ParseMode.HTML
         )
         
     except Exception as e:
-        await msg.edit_text(f"❌ Error parsing JSON: `{str(e)}`", parse_mode=ParseMode.MARKDOWN)
+        await msg.edit_text(f"❌ Error parsing JSON: <code>{safe_html(str(e))}</code>", parse_mode=ParseMode.HTML)
     finally:
         UPLOAD_STATE[message.from_user.id] = False
         if os.path.exists(file_path):
@@ -99,9 +100,9 @@ async def batches_command(client: Bot, message: Message):
         buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}_0")])
     
     await message.reply_text(
-        "📚 **Select a Batch:**",
+        "📚 <b>Select a Batch:</b>",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
 
 
@@ -157,12 +158,12 @@ async def show_teachers(client: Bot, callback_query: CallbackQuery):
     # Back to Batches
     buttons.append([InlineKeyboardButton("⬅️ Back to Batches", callback_data="back_to_batches")])
     
-    batch_name = safe_md(BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id)))
+    batch_name = safe_html(BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id)))
 
     await callback_query.message.edit_text(
-        f"👨‍🏫 **Teachers for {batch_name}:**\nSelect a teacher to view their classes.",
+        f"👨‍🏫 <b>Teachers for {batch_name}:</b>\nSelect a teacher to view their classes.",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
 
 
@@ -176,9 +177,9 @@ async def back_to_batches_callback(client: Bot, callback_query: CallbackQuery):
         buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}_0")])
         
     await callback_query.message.edit_text(
-        "📚 **Select a Batch:**",
+        "📚 <b>Select a Batch:</b>",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
 
 
@@ -194,7 +195,7 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
         return await callback_query.answer("Data not found.", show_alert=True)
         
     teacher = batch["teachers"][teacher_idx]
-    teacher_name = safe_md(teacher.get("teacher_name", "Teacher").split("\n")[0].strip())
+    teacher_name = safe_html(teacher.get("teacher_name", "Teacher").split("\n")[0].strip())
     all_lectures = teacher.get("lectures", [])
     
     limit = 5
@@ -204,30 +205,31 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
     if not page_lectures:
         return await callback_query.answer("No lectures found.", show_alert=True)
 
-    batch_name = safe_md(BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id)))
+    batch_name = safe_html(BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id)))
     
-    text = f"**📖 Lectures by {teacher_name}**\n**Batch:** {batch_name}\n\n"
+    text = f"<b>📖 Lectures by {teacher_name}</b>\n<b>Batch:</b> {batch_name}\n\n"
     
     for lec in page_lectures:
-        lec_date = safe_md(lec.get('date', 'Unknown'))
-        lec_title = safe_md(lec.get('lecture_title', 'Untitled'))
+        lec_date = safe_html(lec.get('date', 'Unknown'))
+        lec_title = safe_html(lec.get('lecture_title', 'Untitled'))
         
-        text += f"🗓 **Date:** `{lec_date}`\n"
-        text += f"📝 **Title:** `{lec_title}`\n"
+        text += f"🗓 <b>Date:</b> <code>{lec_date}</code>\n"
+        text += f"📝 <b>Title:</b> <code>{lec_title}</code>\n"
         
         vid_url = lec.get("video_url", "")
         pdf_url = lec.get("pdf_url", "")
         
         links = []
+        # In HTML mode, we use true <a href='...'> tags for clickable links
         if vid_url and vid_url.startswith("http"):
-            links.append(f"🎬 [Watch Video]({vid_url})")
+            links.append(f"🎬 <a href='{vid_url}'>Watch Video</a>")
         if pdf_url and pdf_url.startswith("http"):
-            links.append(f"📥 [Download PDF]({pdf_url})")
+            links.append(f"📥 <a href='{pdf_url}'>Download PDF</a>")
             
         if links:
             text += " | ".join(links) + "\n\n"
         else:
-            text += "🚫 *No links available*\n\n"
+            text += "🚫 <i>No links available</i>\n\n"
         
     # Navigation Buttons for Lectures list
     nav_buttons = []
@@ -247,5 +249,5 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
         text,
         reply_markup=InlineKeyboardMarkup(buttons),
         disable_web_page_preview=True,
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.HTML
     )
