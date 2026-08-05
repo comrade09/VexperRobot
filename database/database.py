@@ -1,73 +1,60 @@
-import pymongo
 import os
+from motor.motor_asyncio import AsyncIOMotorClient
 from config import DB_URI, DB_NAME
 from bson import ObjectId
 
-dbclient = pymongo.MongoClient(DB_URI)
+# Use Motor for async MongoDB operations
+dbclient = AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
 
 user_data = database['users']
 accounts_data = database['accounts']
-
-# New collection for study batches
 batches_data = database['batches']
 
 
-# --- ORIGINAL USER FUNCTIONS ---
+# --- USER FUNCTIONS ---
 
 async def present_user(user_id: int):
-    found = user_data.find_one({'_id': user_id})
-    if found:
-        return True
-    else:
-        return False
+    found = await user_data.find_one({'_id': user_id})
+    return bool(found)
 
 async def add_user(user_id: int):
-    user_data.insert_one({'_id': user_id})
-    return
+    await user_data.insert_one({'_id': user_id})
 
 async def full_userbase():
-    user_docs = user_data.find()
-    user_ids = []
-    for doc in user_docs:
-        user_ids.append(doc['_id'])
-        
-    return user_ids
+    # Motor requires .to_list() to fetch all documents
+    user_docs = await user_data.find().to_list(length=None)
+    return [doc['_id'] for doc in user_docs]
 
 async def del_user(user_id: int):
-    user_data.delete_one({'_id': user_id})
-    return
+    await user_data.delete_one({'_id': user_id})
 
 
 # --- ACCOUNTS LOGIC ---
 
 async def add_new_person(user_id: int, name: str):
-    accounts_data.insert_one({
+    await accounts_data.insert_one({
         "user_id": user_id,
         "name": name,
-        "spent": 0.0,  # Money they owe me
-        "owed": 0.0,   # Money I owe them
+        "spent": 0.0,  
+        "owed": 0.0,   
         "transactions": []
     })
 
 async def get_people(user_id: int):
-    return list(accounts_data.find({"user_id": user_id}))
+    return await accounts_data.find({"user_id": user_id}).to_list(length=None)
 
 async def get_person_by_id(person_id: str):
-    return accounts_data.find_one({"_id": ObjectId(person_id)})
+    return await accounts_data.find_one({"_id": ObjectId(person_id)})
 
 async def add_transaction(person_id: str, tx_type: str, amount: float, reason: str, date_str: str):
     inc_fields = {}
-    if tx_type == 'spent':
-        inc_fields["spent"] = amount
-    elif tx_type == 'owed':
-        inc_fields["owed"] = amount
-    elif tx_type == 'they_paid':
-        inc_fields["spent"] = -amount  # Reduces what they owe me
-    elif tx_type == 'i_sent':
-        inc_fields["owed"] = -amount   # Reduces what I owe them
+    if tx_type == 'spent': inc_fields["spent"] = amount
+    elif tx_type == 'owed': inc_fields["owed"] = amount
+    elif tx_type == 'they_paid': inc_fields["spent"] = -amount  
+    elif tx_type == 'i_sent': inc_fields["owed"] = -amount   
 
-    accounts_data.update_one(
+    await accounts_data.update_one(
         {"_id": ObjectId(person_id)},
         {
             "$inc": inc_fields,
@@ -91,39 +78,22 @@ async def get_total_stats(user_id: int):
             "total_debt": {"$sum": "$owed"}
         }}
     ]
-    result = list(accounts_data.aggregate(pipeline))
+    result = await accounts_data.aggregate(pipeline).to_list(length=1)
     if result:
         return result[0].get("total_spending", 0.0), result[0].get("total_debt", 0.0)
     return 0.0, 0.0
 
 
-# --- NEW BATCHES LOGIC FOR TELEGRAM BOT ---
-
-async def add_batch(batch_id: str, batch_title: str, batch_url: str):
-    """Inserts a new batch shell or updates the existing batch basic info."""
-    batches_data.update_one(
-        {"batch_id": batch_id},
-        {
-            "$set": {
-                "batch_id": batch_id,
-                "batch_title": batch_title,
-                "batch_url": batch_url
-            }
-        },
-        upsert=True
-    )
+# --- BATCHES LOGIC FOR TELEGRAM BOT ---
 
 async def get_batch(batch_id: str):
-    """Retrieves a single batch document by batch_id."""
-    return batches_data.find_one({"batch_id": batch_id})
+    return await batches_data.find_one({"batch_id": batch_id})
 
 async def get_all_batches():
-    """Retrieves all batches stored in the database."""
-    return list(batches_data.find({}, {"_id": 0}))
+    return await batches_data.find({}, {"_id": 0}).to_list(length=None)
 
 async def update_batch_data(batch_id: str, batch_title: str, batch_url: str, teachers: list, last_updated: str):
-    """Upserts full batch scrap details including teachers, lectures, and dates."""
-    batches_data.update_one(
+    await batches_data.update_one(
         {"batch_id": batch_id},
         {
             "$set": {
