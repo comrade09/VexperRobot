@@ -8,7 +8,7 @@ from bot import Bot
 from config import OWNER_ID
 from helper_func import subscribed
 
-# Import your newly refactored database functions
+# Import your database functions
 from database.database import update_batch_data, get_all_batches, get_batch
 
 UPLOAD_STATE = {}
@@ -18,6 +18,13 @@ BATCH_MAP = {
     "5NDPLQ9R": "Master Pro 1",
     "0KFLQAGZ": "Master Pro 3"
 }
+
+# --- Helper to prevent Markdown crashes ---
+def safe_md(text):
+    """Removes underscores and asterisks from JSON text so standard Markdown doesn't crash."""
+    if not text:
+        return ""
+    return str(text).replace("_", " ").replace("*", "")
 
 # --- 1. JSON Update Command ---
 @Bot.on_message(filters.command("update") & filters.private & filters.user(OWNER_ID), group=9253)
@@ -44,7 +51,6 @@ async def handle_json_file(client: Bot, message: Message):
         batches = data if isinstance(data, list) else [data]
         
         for batch in batches:
-            # Sort lectures for each teacher so newest date is always index 0
             for teacher in batch.get("teachers", []):
                 lectures = teacher.get("lectures", [])
                 
@@ -76,6 +82,7 @@ async def handle_json_file(client: Bot, message: Message):
         if os.path.exists(file_path):
             os.remove(file_path)
 
+
 # --- 2. User Batches Menu ---
 @Bot.on_message(filters.command("batches") & filters.private, group=3656)
 async def batches_command(client: Bot, message: Message):
@@ -89,7 +96,6 @@ async def batches_command(client: Bot, message: Message):
     for b in batches:
         b_id = b.get("batch_id")
         b_name = BATCH_MAP.get(b_id, b.get("batch_title", f"Batch {b_id}"))
-        # We append _0 to signify page 0 for teachers
         buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}_0")])
     
     await message.reply_text(
@@ -98,45 +104,45 @@ async def batches_command(client: Bot, message: Message):
         parse_mode=ParseMode.MARKDOWN
     )
 
-# --- 3. Teachers Menu (Paginated & 2 Columns) ---
-# Regex captures batch_id, and optionally the page number if it exists
+
+# --- 3. Teachers Menu (Strictly 2 Columns, 8 Teachers Per Page) ---
 @Bot.on_callback_query(filters.regex(r"^bch_([^_]+)(?:_(\d+))?$"), group=3653)
 async def show_teachers(client: Bot, callback_query: CallbackQuery):
     batch_id = callback_query.matches[0].group(1)
     
-    # Safely handle older buttons that might not have a page number attached
     page_str = callback_query.matches[0].group(2)
     page = int(page_str) if page_str else 0
     
     batch = await get_batch(batch_id)
-    
     if not batch or not batch.get("teachers"):
-        await callback_query.answer("No teachers found for this batch.", show_alert=True)
-        return
+        return await callback_query.answer("No teachers found for this batch.", show_alert=True)
 
     all_teachers = batch["teachers"]
     total_teachers = len(all_teachers)
     
-    # 10 teachers per page (5 rows of 2)
-    limit = 10 
+    # 8 teachers per page = Exactly 4 rows of 2 columns
+    limit = 8 
     skip = page * limit
-    
-    # Slice the teachers for the current page
     page_teachers = all_teachers[skip:skip+limit]
 
-    # First, collect all teacher buttons for this page in a flat list
-    teacher_buttons = []
+    # Create Buttons
+    buttons = []
+    row = []
     for i, teacher in enumerate(page_teachers):
-        # Calculate the true index in the main list to keep routing correct
         true_idx = skip + i
         raw_name = teacher.get("teacher_name", f"Teacher {true_idx+1}")
         clean_name = raw_name.split("\n")[0].strip()
-        teacher_buttons.append(InlineKeyboardButton(clean_name, callback_data=f"tch_{batch_id}_{true_idx}_0"))
-    
-    # Group them into pairs (2 buttons per row)
-    buttons = []
-    for i in range(0, len(teacher_buttons), 2):
-        buttons.append(teacher_buttons[i:i+2])
+        
+        row.append(InlineKeyboardButton(clean_name, callback_data=f"tch_{batch_id}_{true_idx}_0"))
+        
+        # When we have 2 buttons in the row, append to main buttons and reset
+        if len(row) == 2:
+            buttons.append(row)
+            row = []
+            
+    # Add any remaining odd button
+    if row:
+        buttons.append(row)
         
     # Navigation Buttons for Teachers List
     nav_buttons = []
@@ -148,16 +154,17 @@ async def show_teachers(client: Bot, callback_query: CallbackQuery):
     if nav_buttons:
         buttons.append(nav_buttons)
         
-    # Finally, add the back button on its own row at the bottom
+    # Back to Batches
     buttons.append([InlineKeyboardButton("⬅️ Back to Batches", callback_data="back_to_batches")])
     
-    batch_name = BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id))
+    batch_name = safe_md(BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id)))
 
     await callback_query.message.edit_text(
         f"👨‍🏫 **Teachers for {batch_name}:**\nSelect a teacher to view their classes.",
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode=ParseMode.MARKDOWN
     )
+
 
 @Bot.on_callback_query(filters.regex(r"^back_to_batches$"), group=4763)
 async def back_to_batches_callback(client: Bot, callback_query: CallbackQuery):
@@ -174,7 +181,8 @@ async def back_to_batches_callback(client: Bot, callback_query: CallbackQuery):
         parse_mode=ParseMode.MARKDOWN
     )
 
-# --- 4. Lectures Menu (Paginated, Sorted & Safe URLs) ---
+
+# --- 4. Lectures Menu (Paginated & Safe URLs) ---
 @Bot.on_callback_query(filters.regex(r"^tch_(.*)_(.*)_(.*)"), group=8547)
 async def show_lectures(client: Bot, callback_query: CallbackQuery):
     batch_id = callback_query.matches[0].group(1)
@@ -186,7 +194,7 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
         return await callback_query.answer("Data not found.", show_alert=True)
         
     teacher = batch["teachers"][teacher_idx]
-    teacher_name = teacher.get("teacher_name", "Teacher").split("\n")[0].strip()
+    teacher_name = safe_md(teacher.get("teacher_name", "Teacher").split("\n")[0].strip())
     all_lectures = teacher.get("lectures", [])
     
     limit = 5
@@ -196,26 +204,26 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
     if not page_lectures:
         return await callback_query.answer("No lectures found.", show_alert=True)
 
-    batch_name = BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id))
+    batch_name = safe_md(BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id)))
     
     text = f"**📖 Lectures by {teacher_name}**\n**Batch:** {batch_name}\n\n"
     
     for lec in page_lectures:
-        text += f"🗓 **Date:** `{lec.get('date', 'Unknown')}`\n"
-        text += f"📝 **Title:** `{lec.get('lecture_title', 'Untitled')}`\n"
+        lec_date = safe_md(lec.get('date', 'Unknown'))
+        lec_title = safe_md(lec.get('lecture_title', 'Untitled'))
         
-        # Safely extract URLs
+        text += f"🗓 **Date:** `{lec_date}`\n"
+        text += f"📝 **Title:** `{lec_title}`\n"
+        
         vid_url = lec.get("video_url", "")
         pdf_url = lec.get("pdf_url", "")
         
         links = []
         if vid_url and vid_url.startswith("http"):
             links.append(f"🎬 [Watch Video]({vid_url})")
-        
         if pdf_url and pdf_url.startswith("http"):
             links.append(f"📥 [Download PDF]({pdf_url})")
             
-        # Add links to text if they exist
         if links:
             text += " | ".join(links) + "\n\n"
         else:
@@ -232,7 +240,7 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
     if nav_buttons:
         buttons.append(nav_buttons)
         
-    # Back button goes to page 0 of that specific batch's teacher list
+    # Go back to the exact teacher list (page 0)
     buttons.append([InlineKeyboardButton("⬅️ Back to Teachers", callback_data=f"bch_{batch_id}_0")])
 
     await callback_query.message.edit_text(
