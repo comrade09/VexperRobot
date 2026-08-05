@@ -1,28 +1,31 @@
-FROM python:3.10-slim-bullseye
-
-# Install required OS libraries and Google Chrome
-RUN apt-get update && apt-get install -y \
-    wget \
-    curl \
-    unzip \
-    gnupg \
-    libnss3 \
-    libxss1 \
-    libappindicator3-1 \
-    libasound2 \
-    fonts-liberation \
-    libx11-xcb1 \
-    && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
-    && rm ./google-chrome-stable_current_amd64.deb \
-    && rm -rf /var/lib/apt/lists/*
-
+FROM python:3.10-slim
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    chromium-driver \
+    fonts-liberation \
+    libnss3 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libatspi2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libasound2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libxkbcommon0 \
+    libx11-xcb1 \
+    xdg-utils \
+    && rm -rf /var/lib/apt/lists/*
 
+RUN chromium --version && chromedriver --version && ldd $(which chromedriver) | grep "not found" || true
+
+COPY requirements.txt requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 COPY . .
-
-# Run your main bot file (change 'bot.py' if your main file has a different name)
-CMD ["python", "bot.py"]
+CMD ["python3", "main.py"]
