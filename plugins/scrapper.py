@@ -37,6 +37,11 @@ def setup_driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
+    # Added modern User-Agent to prevent bot detection / blocking
+    options.add_argument(
+        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
     
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     return driver
@@ -45,41 +50,75 @@ def setup_driver():
 def run_selenium_scraper(batch_url: str):
     driver = setup_driver()
 
+    # Extract batch_id safely
     batch_id_match = re.search(r"batch_id=([a-zA-Z0-9_%-]+)", batch_url)
     batch_id = batch_id_match.group(1) if batch_id_match else "Unknown"
 
     driver.get(batch_url)
-    time.sleep(3)
 
+    # 1. Wait for page body to fully load
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
+    except Exception:
+        pass
+
+    # 2. Extract Batch Title
     try:
         batch_title = driver.find_element(By.XPATH, "//h1 | //h2 | //title").text.strip()
+        if not batch_title:
+            batch_title = f"Batch_{batch_id}"
     except Exception:
         batch_title = f"Batch_{batch_id}"
 
-    for _ in range(5):
+    # 3. Scroll to trigger lazy loading of elements
+    for _ in range(6):
         driver.execute_script("window.scrollBy(0, 800);")
-        time.sleep(0.4)
+        time.sleep(0.5)
 
-    teacher_elements = driver.find_elements(By.XPATH, "//a[contains(@href, 'teacher-detail.php')] | //*[contains(@onclick, 'teacher-detail.php')]")
+    # 4. DOM-based search with expanded selectors
     teacher_urls = []
+    elements = driver.find_elements(
+        By.XPATH, 
+        "//a[contains(@href, 'teacher-detail.php')] | "
+        "//*[contains(@onclick, 'teacher-detail.php')] | "
+        "//div[contains(@class, 'card')]//a | "
+        "//div[contains(@class, 'teacher')]//a"
+    )
     
-    for elem in teacher_elements:
+    for elem in elements:
         href = elem.get_attribute("href") or ""
         onclick = elem.get_attribute("onclick") or ""
         target = href if "teacher-detail.php" in href else onclick
+        
         if target:
-            match = re.search(r"teacher-detail\.php\?batch_id=[^'\"\s&]+&teacher=([^'\"\s&]+)", target)
+            match = re.search(r"teacher=([^'\"\s&]+)", target)
             if match:
-                t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={match.group(1)}"
+                teacher_param = match.group(1)
+                t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={teacher_param}"
                 if t_url not in teacher_urls:
                     teacher_urls.append(t_url)
 
+    # 5. Regex Fallback: Search direct page HTML if DOM elements were missed
+    if not teacher_urls:
+        page_source = driver.page_source
+        matches = re.findall(r"teacher-detail\.php\?[^'\"\s>]*teacher=([^'\"\s&<>]+)", page_source)
+        for t_param in set(matches):
+            t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={t_param}"
+            if t_url not in teacher_urls:
+                teacher_urls.append(t_url)
+
     teachers_data = []
 
+    # 6. Scrape each teacher detail page
     for teacher_url in teacher_urls:
         driver.get(teacher_url)
+        
         try:
-            WebDriverWait(driver, 8).until(EC.presence_of_element_located((By.CLASS_NAME, "content-card")))
+            WebDriverWait(driver, 8).until(
+                EC.presence_of_element_located((By.XPATH, "//*[contains(@class, 'card') or contains(@class, 'content')]"))
+            )
         except Exception:
             time.sleep(2)
 
@@ -87,43 +126,55 @@ def run_selenium_scraper(batch_url: str):
             driver.execute_script("window.scrollBy(0, 1000);")
             time.sleep(0.3)
 
+        # Teacher Name
         try:
-            teacher_name = driver.find_element(By.XPATH, "//div[contains(@class, 'teacher-header')] | //h2 | //h1").text.strip()
+            teacher_name = driver.find_element(
+                By.XPATH, "//div[contains(@class, 'teacher')]//h2 | //h1 | //h2"
+            ).text.strip()
         except Exception:
             t_param = re.search(r"teacher=([^&]+)", teacher_url)
             teacher_name = unquote(t_param.group(1)).replace("+", " ") if t_param else "Teacher"
 
-        cards = driver.find_elements(By.CLASS_NAME, "content-card")
+        # Lecture Cards
+        cards = driver.find_elements(
+            By.XPATH, "//div[contains(@class, 'content-card')] | //div[contains(@class, 'card')]"
+        )
         lectures = []
 
         for card in cards:
+            # Title
             try:
-                lecture_title = card.find_element(By.XPATH, ".//h3").text.strip()
+                lecture_title = card.find_element(By.XPATH, ".//h3 | .//h4 | .//strong").text.strip()
             except Exception:
                 lecture_title = "Untitled Lecture"
 
+            # Date
             lecture_date = ""
             try:
-                date_elem = card.find_element(By.XPATH, ".//div[contains(@class, 'content-meta')] | .//span[contains(@class, 'date')]")
+                date_elem = card.find_element(
+                    By.XPATH, ".//div[contains(@class, 'content-meta')] | .//span[contains(@class, 'date')]"
+                )
                 lecture_date = date_elem.text.strip()
             except Exception:
                 date_match = re.search(r"([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})", card.text)
                 if date_match:
                     lecture_date = date_match.group(1)
 
+            # Video URL
             video_url = ""
             try:
-                v_btn = card.find_element(By.XPATH, ".//button[contains(@class, 'video-btn')]")
-                onclick_val = v_btn.get_attribute("onclick")
+                v_btn = card.find_element(By.XPATH, ".//*[contains(@onclick, 'openPlayerPopup')]")
+                onclick_val = v_btn.get_attribute("onclick") or ""
                 v_match = re.search(r"openPlayerPopup\('([^']+)'", onclick_val)
                 if v_match:
                     video_url = unquote(v_match.group(1))
             except Exception:
                 pass
 
+            # PDF URL
             pdf_url = ""
             try:
-                p_btn = card.find_element(By.XPATH, ".//a[contains(@class, 'pdf-btn')]")
+                p_btn = card.find_element(By.XPATH, ".//a[contains(@href, '.pdf') or contains(@class, 'pdf')]")
                 pdf_url = p_btn.get_attribute("href") or ""
             except Exception:
                 pass
@@ -148,7 +199,7 @@ def run_selenium_scraper(batch_url: str):
 
 # --- ADMIN COMMANDS ---
 
-@Bot.on_message(filters.command('addnew') & filters.private & filters.user(OWNER_ID),group=8367)
+@Bot.on_message(filters.command('addnew') & filters.private & filters.user(OWNER_ID), group=8367)
 async def admin_panel(bot: Bot, message: Message):
     buttons = [
         [InlineKeyboardButton("➕ Add New Batch", callback_data="admin_add_batch")],
@@ -161,7 +212,7 @@ async def admin_panel(bot: Bot, message: Message):
     )
 
 
-@Bot.on_message(filters.private & filters.user(OWNER_ID) & filters.text,group=8312)
+@Bot.on_message(filters.private & filters.user(OWNER_ID) & filters.text, group=8312)
 async def handle_admin_text(bot: Bot, message: Message):
     user_id = message.from_user.id
     state = user_states.get(user_id)
@@ -194,7 +245,7 @@ async def handle_admin_text(bot: Bot, message: Message):
 
 # --- USER COMMANDS & CALENDAR ---
 
-@Bot.on_message(filters.command(['cold', 'bold']) & filters.private,group=3722)
+@Bot.on_message(filters.command(['cold', 'bold']) & filters.private, group=3722)
 async def user_batches(bot: Bot, message: Message):
     batches = await get_all_batches()
     if not batches:
