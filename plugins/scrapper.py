@@ -1,217 +1,327 @@
 import os
 import re
 import time
-import base64
 import asyncio
-from pyrogram import filters
-from pyrogram.enums import ParseMode
-from pyrogram.types import Message
-from bot import Bot  # Uses your already running Bot instance
+from urllib.parse import unquote
+from datetime import datetime
 
-# --- SELENIUM IMPORTS ---
+from pyrogram import filters
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
-# ==========================================
-# 1. SYNCHRONOUS SELENIUM FUNCTIONS
-# ==========================================
+# Project Imports
+from config import OWNER_ID
+from bot import Bot
+from database.database import (
+    get_all_batches, 
+    get_batch, 
+    update_batch_data
+)
+
+# Temporary memory to track admin input state
+user_states = {}
+
+
+# --- EMBEDDED SELENIUM SCRAPER FUNCTION ---
+
 def setup_driver():
     options = webdriver.ChromeOptions()
-
-    options.binary_location = "/usr/bin/chromium"
-
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--disable-extensions")
     options.add_argument("--window-size=1920,1080")
-    options.add_argument("--remote-debugging-port=9222")
-
-    prefs = {
-        "download_restrictions": 3,
-        "download.prompt_for_download": True,
-        "plugins.always_open_pdf_externally": False
-    }
-    options.add_experimental_option("prefs", prefs)
-    options.add_experimental_option("excludeSwitches", ["enable-logging"])
-
-    service = Service("/usr/bin/chromedriver")
-
-    try:
-        driver = webdriver.Chrome(service=service, options=options)
-    except Exception as e:
-        print(f"[Scraper] Failed to start Chrome driver: {e}")
-        raise
-
+    
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     return driver
-def dismiss_telegram_popup(driver):
-    try:
-        wait = WebDriverWait(driver, 3)
-        close_btn = wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "#tgPopup button, #tgPopup .close, #tgPopup svg, .tg-popup svg"))
-        )
-        close_btn.click()
-    except Exception:
-        try:
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-        except Exception:
-            pass
 
-def scrape_lectures_and_pdfs(batch_name, subject_name):
+
+def run_selenium_scraper(batch_url: str):
     driver = setup_driver()
-    url = "https://uc-web.uc27.workers.dev/"
-    extracted_data = []
+
+    batch_id_match = re.search(r"batch_id=([a-zA-Z0-9_%-]+)", batch_url)
+    batch_id = batch_id_match.group(1) if batch_id_match else "Unknown"
+
+    driver.get(batch_url)
+    time.sleep(3)
 
     try:
-        print(f"[Scraper] Navigating to {url}...")
-        driver.get(url)
-        wait = WebDriverWait(driver, 20)
+        batch_title = driver.find_element(By.XPATH, "//h1 | //h2 | //title").text.strip()
+    except Exception:
+        batch_title = f"Batch_{batch_id}"
 
-        time.sleep(2)
-        dismiss_telegram_popup(driver)
-        
-        print(f"[Scraper] Searching for batch: {batch_name}")
-        batch_xpath = f"//a[contains(., '{batch_name}')] | //h3[contains(., '{batch_name}')] | //div[contains(text(), '{batch_name}')]"
-        batch_card = wait.until(EC.element_to_be_clickable((By.XPATH, batch_xpath)))
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", batch_card)
-        time.sleep(0.5)
-        batch_card.click()
-        print(f"[Scraper] Successfully clicked batch!")
+    for _ in range(5):
+        driver.execute_script("window.scrollBy(0, 800);")
+        time.sleep(0.4)
 
-        time.sleep(2)
-        dismiss_telegram_popup(driver)
-        
-        print(f"[Scraper] Searching for subject: {subject_name}")
-        subject_xpath = f"//*[text()='{subject_name}' or contains(text(), '{subject_name}')]"
-        subject_element = wait.until(EC.element_to_be_clickable((By.XPATH, subject_xpath)))
-        
-        driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", subject_element)
-        time.sleep(1.5) 
-        driver.execute_script("arguments[0].click();", subject_element)
-        print(f"[Scraper] Successfully clicked subject!")
+    teacher_elements = driver.find_elements(By.XPATH, "//a[contains(@href, 'teacher-detail.php')] | //*[contains(@onclick, 'teacher-detail.php')]")
+    teacher_urls = []
+    
+    for elem in teacher_elements:
+        href = elem.get_attribute("href") or ""
+        onclick = elem.get_attribute("onclick") or ""
+        target = href if "teacher-detail.php" in href else onclick
+        if target:
+            match = re.search(r"teacher-detail\.php\?batch_id=[^'\"\s&]+&teacher=([^'\"\s&]+)", target)
+            if match:
+                t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={match.group(1)}"
+                if t_url not in teacher_urls:
+                    teacher_urls.append(t_url)
 
-        time.sleep(3) 
+    teachers_data = []
 
-        wait.until(EC.presence_of_all_elements_located((By.XPATH, "//button[contains(., 'Watch')]")))
-        total_lectures = len(driver.find_elements(By.XPATH, "//button[contains(., 'Watch')]"))
-        print(f"[Scraper] Found {total_lectures} lecture(s). Extracting...")
+    for teacher_url in teacher_urls:
+        driver.get(teacher_url)
+        try:
+            WebDriverWait(driver, 8).until(EC.presence_of_element_located((By.CLASS_NAME, "content-card")))
+        except Exception:
+            time.sleep(2)
 
-        for index in range(total_lectures):
-            pdf_info = "No PDF Available"
-            
+        for _ in range(5):
+            driver.execute_script("window.scrollBy(0, 1000);")
+            time.sleep(0.3)
+
+        try:
+            teacher_name = driver.find_element(By.XPATH, "//div[contains(@class, 'teacher-header')] | //h2 | //h1").text.strip()
+        except Exception:
+            t_param = re.search(r"teacher=([^&]+)", teacher_url)
+            teacher_name = unquote(t_param.group(1)).replace("+", " ") if t_param else "Teacher"
+
+        cards = driver.find_elements(By.CLASS_NAME, "content-card")
+        lectures = []
+
+        for card in cards:
             try:
-                pdf_buttons = driver.find_elements(By.XPATH, "//button[contains(@class, 'btn-pdf')]")
-                if index < len(pdf_buttons):
-                    pdf_btn = pdf_buttons[index]
-                    onclick_text = pdf_btn.get_attribute("onclick")
-                    
-                    if onclick_text and "dlPdf" in onclick_text:
-                        match = re.search(r"dlPdf\('([^']*)',\s*'([^']*)'\)", onclick_text)
-                        if match:
-                            raw_pdf_id = match.group(1)
-                            pdf_filename = match.group(2)
-                            try:
-                                real_pdf_id = base64.b64decode(raw_pdf_id).decode('utf-8')
-                                pdf_info = f"https://player.uacdn.net/slides_pdf/{real_pdf_id}/{pdf_filename}"
-                            except Exception:
-                                pdf_info = f"https://player.uacdn.net/slides_pdf/{raw_pdf_id}/{pdf_filename}"
+                lecture_title = card.find_element(By.XPATH, ".//h3").text.strip()
             except Exception:
-                pdf_info = "Error capturing PDF"
+                lecture_title = "Untitled Lecture"
 
-            video_src = ""
+            lecture_date = ""
             try:
-                watch_buttons = driver.find_elements(By.XPATH, "//button[contains(., 'Watch')]")
-                current_button = watch_buttons[index]
-
-                driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", current_button)
-                time.sleep(1) 
-                driver.execute_script("arguments[0].click();", current_button)
-
-                video_element = wait.until(EC.presence_of_element_located((By.ID, "videoPlayer")))
-
-                for _ in range(25): 
-                    video_src = video_element.get_attribute("src")
-                    if video_src and "uamedia.uacdn.net" in video_src:
-                        break
-                    time.sleep(0.5)
+                date_elem = card.find_element(By.XPATH, ".//div[contains(@class, 'content-meta')] | .//span[contains(@class, 'date')]")
+                lecture_date = date_elem.text.strip()
             except Exception:
-                video_src = "Error loading video player"
+                date_match = re.search(r"([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})", card.text)
+                if date_match:
+                    lecture_date = date_match.group(1)
 
-            extracted_data.append({
-                "lecture": index + 1,
-                "video": video_src,
-                "pdf": pdf_info
+            video_url = ""
+            try:
+                v_btn = card.find_element(By.XPATH, ".//button[contains(@class, 'video-btn')]")
+                onclick_val = v_btn.get_attribute("onclick")
+                v_match = re.search(r"openPlayerPopup\('([^']+)'", onclick_val)
+                if v_match:
+                    video_url = unquote(v_match.group(1))
+            except Exception:
+                pass
+
+            pdf_url = ""
+            try:
+                p_btn = card.find_element(By.XPATH, ".//a[contains(@class, 'pdf-btn')]")
+                pdf_url = p_btn.get_attribute("href") or ""
+            except Exception:
+                pass
+
+            lectures.append({
+                "lecture_title": lecture_title,
+                "date": lecture_date if lecture_date else "Unknown Date",
+                "video_url": video_url,
+                "pdf_url": pdf_url
             })
 
-            try:
-                close_btn = driver.find_element(By.XPATH, "//div[@id='videoModal']//button | //div[@id='videoModal']//*[name()='svg'] | //div[contains(@class, 'modal-head')]/div")
-                driver.execute_script("arguments[0].click();", close_btn)
-            except Exception:
-                driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ESCAPE)
-            
-            time.sleep(1.5) 
+        teachers_data.append({
+            "teacher_name": teacher_name,
+            "teacher_url": teacher_url,
+            "lectures": lectures
+        })
 
-    except Exception as e:
-        print(f"Scraper error: {e}")
-    finally:
-        driver.quit()
+    driver.quit()
 
-    return extracted_data
+    return batch_id, batch_title, teachers_data
 
-# ==========================================
-# 2. ASYNC PYROGRAM HANDLER
-# ==========================================
-@Bot.on_message(filters.command("scrape"), group=25198)
-async def handle_scrape_command(client: Bot, message: Message):
-    command_args = message.text.replace('/scrape', '').strip()
-    
-    if '|' not in command_args:
-        await message.reply_text(
-            "❌ **Invalid format.**\n\nUse:\n`/scrape Batch Name | Subject Name`\n\nExample:\n`/scrape Kota NEET UG 2027 Master Pro 1 | Botany`",
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
 
-    batch_name, subject_name = [x.strip() for x in command_args.split('|', 1)]
-    
-    status_msg = await message.reply_text(
-        f"⏳ **Scraper Started!**\n\n**Batch:** `{batch_name}`\n**Subject:** `{subject_name}`\n\nPlease wait while links are being extracted...",
-        parse_mode=ParseMode.MARKDOWN
+# --- ADMIN COMMANDS ---
+
+@Bot.on_message(filters.command('addnew') & filters.private & filters.user(OWNER_ID),group=8367)
+async def admin_panel(bot: Bot, message: Message):
+    buttons = [
+        [InlineKeyboardButton("➕ Add New Batch", callback_data="admin_add_batch")],
+        [InlineKeyboardButton("🔄 Manage / Update Batches", callback_data="admin_manage_batches")],
+        [InlineKeyboardButton("❌ Close", callback_data="close")]
+    ]
+    await message.reply_text(
+        "🛠 **Admin Control Panel**\nChoose an action below:",
+        reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-    try:
-        data = await asyncio.to_thread(scrape_lectures_and_pdfs, batch_name, subject_name)
-        
-        if data:
-            safe_subject_name = subject_name.replace(" ", "_").lower()
-            filename = f"{safe_subject_name}_full_data.txt"
 
-            with open(filename, "w", encoding="utf-8") as file:
-                for item in data:
-                    file.write(f"Lecture {item['lecture']}:\n")
-                    file.write(f"Video URL: {item['video']}\n")
-                    file.write(f"PDF URL:   {item['pdf']}\n")
-                    file.write("-" * 50 + "\n")
+@Bot.on_message(filters.private & filters.user(OWNER_ID) & filters.text,group=8312)
+async def handle_admin_text(bot: Bot, message: Message):
+    user_id = message.from_user.id
+    state = user_states.get(user_id)
 
-            await message.reply_document(
-                document=filename,
-                caption=f"✅ Scraped **{len(data)}** lectures for **{subject_name}**!",
-                parse_mode=ParseMode.MARKDOWN
+    if state == "WAITING_FOR_BATCH_URL":
+        url = message.text.strip()
+        if "batch_id=" not in url:
+            await message.reply_text("❌ Invalid link! Must contain `batch_id=` parameter.")
+            return
+
+        user_states[user_id] = None
+        status_msg = await message.reply_text("⏳ **Starting Scraper...**\nFetching teachers and lectures. Please wait.")
+
+        try:
+            batch_id, batch_title, teachers_data = await asyncio.to_thread(run_selenium_scraper, url)
+            
+            # Save scraped data to MongoDB
+            await update_batch_data(
+                batch_id=batch_id,
+                batch_title=batch_title,
+                batch_url=url,
+                teachers=teachers_data,
+                last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
             
-            if os.path.exists(filename):
-                os.remove(filename)
-                
-            await status_msg.delete()
+            await status_msg.edit_text(f"✅ **Batch Successfully Saved!**\n\n📌 **Title:** `{batch_title}`\n👨‍🏫 **Teachers Scraped:** {len(teachers_data)}")
+        except Exception as e:
+            await status_msg.edit_text(f"❌ **Error while scraping:**\n`{e}`")
 
-        else:
-            await status_msg.edit_text("❌ Scraper finished, but no lectures were found. Please check the batch and subject names.")
 
-    except Exception as e:
-        await status_msg.edit_text(f"❌ An error occurred:\n`{str(e)}`", parse_mode=ParseMode.MARKDOWN)
+# --- USER COMMANDS & CALENDAR ---
+
+@Bot.on_message(filters.command(['cold', 'bold']) & filters.private,group=3722)
+async def user_batches(bot: Bot, message: Message):
+    batches = await get_all_batches()
+    if not batches:
+        await message.reply_text("📁 No batches available at the moment.")
+        return
+
+    buttons = []
+    for b in batches:
+        buttons.append([InlineKeyboardButton(f"📚 {b['batch_title']}", callback_data=f"ubatch_{b['batch_id']}")])
+
+    await message.reply_text("👇 **Select a Batch to view lectures:**", reply_markup=InlineKeyboardMarkup(buttons))
+
+
+# --- CALLBACK QUERY HANDLER ---
+
+@Bot.on_callback_query(group=7678)
+async def cb_handler(bot: Bot, query: CallbackQuery):
+    data = query.data
+    user_id = query.from_user.id
+
+    if data == "admin_add_batch":
+        if user_id != OWNER_ID:
+            return await query.answer("Unauthorized", show_alert=True)
+        user_states[user_id] = "WAITING_FOR_BATCH_URL"
+        await query.message.edit_text("🔗 **Send me the direct Batch URL:**\n\nExample: `https://studyuk.online/offline/batch-details.php?batch_id=5NDPLQ9R`")
+
+    elif data == "admin_manage_batches":
+        if user_id != OWNER_ID:
+            return await query.answer("Unauthorized", show_alert=True)
+        batches = await get_all_batches()
+        if not batches:
+            return await query.answer("No batches found in database.", show_alert=True)
+
+        buttons = []
+        for b in batches:
+            buttons.append([InlineKeyboardButton(f"🔄 Update: {b['batch_title']}", callback_data=f"reupdate_{b['batch_id']}")])
+        buttons.append([InlineKeyboardButton("🔙 Back", callback_data="admin_back")])
+
+        await query.message.edit_text("⚙️ **Select a Batch to re-scrape and update:**", reply_markup=InlineKeyboardMarkup(buttons))
+
+    elif data.startswith("reupdate_"):
+        if user_id != OWNER_ID:
+            return await query.answer("Unauthorized", show_alert=True)
+        batch_id = data.split("_")[1]
+        batch = await get_batch(batch_id)
+        
+        await query.message.edit_text(f"⏳ **Updating `{batch['batch_title']}`...**\nScraping new lectures in the background...")
+        try:
+            b_id, title, teachers_data = await asyncio.to_thread(run_selenium_scraper, batch['batch_url'])
+            
+            await update_batch_data(
+                batch_id=b_id,
+                batch_title=title,
+                batch_url=batch['batch_url'],
+                teachers=teachers_data,
+                last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            
+            await query.message.edit_text(f"✅ **Update Complete!**\n\n📌 **Title:** `{title}`\n👨‍🏫 **Teachers Updated:** {len(teachers_data)}")
+        except Exception as e:
+            await query.message.edit_text(f"❌ **Update Failed:**\n`{e}`")
+
+    elif data.startswith("ubatch_"):
+        batch_id = data.split("_")[1]
+        batch = await get_batch(batch_id)
+        
+        if not batch:
+            return await query.answer("Batch not found.", show_alert=True)
+
+        dates = set()
+        for teacher in batch.get("teachers", []):
+            for lecture in teacher.get("lectures", []):
+                if lecture.get("date"):
+                    dates.add(lecture["date"])
+
+        if not dates:
+            return await query.answer("No dates found for this batch.", show_alert=True)
+
+        sorted_dates = list(dates)
+
+        buttons = []
+        row = []
+        for d in sorted_dates:
+            row.append(InlineKeyboardButton(f"📅 {d}", callback_data=f"udate_{batch_id}_{d}"))
+            if len(row) == 2:
+                buttons.append(row)
+                row = []
+        if row:
+            buttons.append(row)
+
+        buttons.append([InlineKeyboardButton("🔙 Back to Batches", callback_data="user_back")])
+
+        await query.message.edit_text(
+            f"📖 **{batch['batch_title']}**\nSelect a date to get lectures uploaded on that day:",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+    elif data.startswith("udate_"):
+        _, batch_id, selected_date = data.split("_", 2)
+        batch = await get_batch(batch_id)
+
+        found_lectures = []
+        for teacher in batch.get("teachers", []):
+            for lecture in teacher.get("lectures", []):
+                if lecture.get("date") == selected_date:
+                    found_lectures.append((teacher["teacher_name"], lecture))
+
+        if not found_lectures:
+            return await query.answer("No lectures found for this date.", show_alert=True)
+
+        text = f"📅 **Lectures for {selected_date}**\n📌 **Batch:** {batch['batch_title']}\n"
+        text += "━" * 25 + "\n\n"
+
+        for teacher_name, lec in found_lectures:
+            text += f"👨‍🏫 **Teacher:** {teacher_name}\n"
+            text += f"📖 **Title:** `{lec['lecture_title']}`\n"
+            if lec['video_url']:
+                text += f"🎥 [Watch Video]({lec['video_url']})\n"
+            if lec['pdf_url']:
+                text += f"📄 [Download PDF]({lec['pdf_url']})\n"
+            text += "\n"
+
+        buttons = [[InlineKeyboardButton("🔙 Back to Calendar", callback_data=f"ubatch_{batch_id}")]]
+        await query.message.edit_text(text, disable_web_page_preview=True, reply_markup=InlineKeyboardMarkup(buttons))
+
+    elif data == "user_back":
+        await user_batches(bot, query.message)
+
+    elif data == "close":
+        await query.message.delete()
