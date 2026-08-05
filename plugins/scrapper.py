@@ -156,7 +156,7 @@ def scrape_lectures_and_pdfs(batch_name, subject_name):
 # ==========================================
 # 2. ASYNC PYROGRAM HANDLER
 # ==========================================
-@Bot.on_message(filters.command("scrape"),group="98378")
+@Bot.on_message(filters.command("scrape"),group=25198)
 async def handle_scrape_command(client: Bot, message: Message):
     command_args = message.text.replace('/scrape', '').strip()
     
