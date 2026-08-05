@@ -19,3 +19,4 @@ google-genai
 openai
 selenium
 webdriver-manager
+Flask
