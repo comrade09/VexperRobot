@@ -21,15 +21,18 @@ from selenium.webdriver.support import expected_conditions as EC
 # ==========================================
 def setup_driver():
     options = webdriver.ChromeOptions()
-    
-    # Explicitly point to the Chromium binary installed by Docker
+
     options.binary_location = "/usr/bin/chromium"
-    
+
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--disable-extensions")
     options.add_argument("--window-size=1920,1080")
-    
+    options.add_argument("--remote-debugging-port=9222")
+
     prefs = {
         "download_restrictions": 3,
         "download.prompt_for_download": True,
@@ -37,13 +40,16 @@ def setup_driver():
     }
     options.add_experimental_option("prefs", prefs)
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    
-    # Use the system's pre-installed ChromeDriver directly
-    service = Service("/usr/bin/chromedriver")
-    driver = webdriver.Chrome(service=service, options=options)
-    
-    return driver
 
+    service = Service("/usr/bin/chromedriver")
+
+    try:
+        driver = webdriver.Chrome(service=service, options=options)
+    except Exception as e:
+        print(f"[Scraper] Failed to start Chrome driver: {e}")
+        raise
+
+    return driver
 def dismiss_telegram_popup(driver):
     try:
         wait = WebDriverWait(driver, 3)
