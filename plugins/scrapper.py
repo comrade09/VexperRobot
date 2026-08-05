@@ -28,7 +28,7 @@ from database.database import (
 user_states = {}
 
 
-# --- EMBEDDED SELENIUM SCRAPER FUNCTION ---
+# --- ADVANCED ANTI-DETECTION SELENIUM DRIVER ---
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -37,20 +37,28 @@ def setup_driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
+    
+    # Anti-bot bypass settings
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
     options.add_argument(
-        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     )
     
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    
+    # Conceal webdriver presence
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return driver
 
 
 def run_selenium_scraper(batch_url: str):
-    # Sanitize incoming batch_url string (strips backticks, quotes, and whitespace)
+    # Sanitize incoming batch_url string
     batch_url = batch_url.strip("`'\" \t\n\r")
 
-    # Clean batch_id extraction (strictly captures alphanumeric characters)
+    # Clean batch_id extraction
     batch_id_match = re.search(r"batch_id=([a-zA-Z0-9]+)", batch_url)
     batch_id = batch_id_match.group(1) if batch_id_match else "Unknown"
 
@@ -58,149 +66,137 @@ def run_selenium_scraper(batch_url: str):
         batch_url = f"https://studyuk.online/offline/batch-details.php?batch_id={batch_id}"
 
     driver = setup_driver()
-    driver.get(batch_url)
-
-    # 1. Wait for page body to fully load
-    try:
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.TAG_NAME, "body"))
-        )
-    except Exception:
-        pass
-
-    # 2. Extract Batch Title
-    try:
-        batch_title = driver.find_element(By.XPATH, "//h1 | //h2 | //title").text.strip()
-        if not batch_title:
-            batch_title = f"Batch_{batch_id}"
-    except Exception:
-        batch_title = f"Batch_{batch_id}"
-
-    # 3. Scroll down to trigger lazy loading of elements
-    for _ in range(6):
-        driver.execute_script("window.scrollBy(0, 800);")
-        time.sleep(0.5)
-
-    driver.execute_script("window.scrollTo(0, 0);")
-    time.sleep(0.5)
-
-    # 4. DOM-based search with flexible matching for teacher detail links
-    teacher_urls = []
-    teacher_elements = driver.find_elements(
-        By.XPATH, 
-        "//a[contains(@href, 'teacher-detail.php')] | "
-        "//*[contains(@onclick, 'teacher-detail.php')] | "
-        "//div[contains(@class, 'card')]//a | "
-        "//div[contains(@class, 'teacher')]//a"
-    )
     
-    for elem in teacher_elements:
-        href = elem.get_attribute("href") or ""
-        onclick = elem.get_attribute("onclick") or ""
-        target = href if "teacher-detail.php" in href else onclick
-        
-        if target:
-            # Capture teacher parameter regardless of order or surrounding quotes
-            match = re.search(r"teacher=([^'\"\s&`]+)", target)
-            if match:
-                teacher_param = match.group(1)
-                t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={teacher_param}"
+    try:
+        driver.get(batch_url)
+
+        # 1. Wait up to 15 seconds for page load / Cloudflare pass
+        time.sleep(3)
+        for _ in range(3):
+            driver.execute_script("window.scrollBy(0, 500);")
+            time.sleep(1)
+
+        # 2. Extract Batch Title
+        batch_title = ""
+        try:
+            title_elem = driver.find_element(By.XPATH, "//h1 | //h2 | //title | //*[contains(@class, 'title')]")
+            batch_title = title_elem.text.strip()
+        except Exception:
+            pass
+
+        if not batch_title or "Just a moment" in batch_title or "Attention Required" in batch_title:
+            batch_title = f"Batch_{batch_id}"
+
+        # 3. Extract Teacher URLs - Multi-strategy search
+        teacher_urls = []
+
+        # Strategy A: Scan all links and clickable elements in DOM
+        elements = driver.find_elements(By.XPATH, "//*[@href or @onclick]")
+        for elem in elements:
+            href = elem.get_attribute("href") or ""
+            onclick = elem.get_attribute("onclick") or ""
+            combined = href + " " + onclick
+            
+            if "teacher" in combined:
+                match = re.search(r"teacher=([^'\"\s&`]+)", combined)
+                if match:
+                    t_param = match.group(1)
+                    t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={t_param}"
+                    if t_url not in teacher_urls:
+                        teacher_urls.append(t_url)
+
+        # Strategy B: Direct page HTML regex search (catches hidden scripts/JS state objects)
+        page_source = driver.page_source
+        matches = re.findall(r"teacher[=\-_]([^'\"\s&<>`/\\]+)", page_source, re.IGNORECASE)
+        for t_param in set(matches):
+            if len(t_param) > 1 and t_param.lower() not in ["detail.php", "detail", "index", "php"]:
+                t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={t_param}"
                 if t_url not in teacher_urls:
                     teacher_urls.append(t_url)
 
-    # 5. Regex Fallback: Scan direct page source if DOM elements were missed
-    if not teacher_urls:
-        page_source = driver.page_source
-        matches = re.findall(r"teacher-detail\.php\?[^'\"\s>]*teacher=([^'\"\s&<>`]+)", page_source)
-        for t_param in set(matches):
-            t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={t_param}"
-            if t_url not in teacher_urls:
-                teacher_urls.append(t_url)
+        teachers_data = []
 
-    teachers_data = []
-
-    # 6. Scrape each teacher detail page
-    for teacher_url in teacher_urls:
-        driver.get(teacher_url)
-        
-        try:
-            WebDriverWait(driver, 8).until(
-                EC.presence_of_element_located((By.XPATH, "//*[contains(@class, 'card') or contains(@class, 'content')]"))
-            )
-        except Exception:
+        # 4. Scrape each teacher detail page
+        for teacher_url in teacher_urls:
+            driver.get(teacher_url)
             time.sleep(2)
 
-        for _ in range(5):
-            driver.execute_script("window.scrollBy(0, 1000);")
-            time.sleep(0.3)
+            for _ in range(4):
+                driver.execute_script("window.scrollBy(0, 800);")
+                time.sleep(0.4)
 
-        # Teacher Name
-        try:
-            teacher_name = driver.find_element(
-                By.XPATH, "//div[contains(@class, 'teacher')]//h2 | //h1 | //h2"
-            ).text.strip()
-        except Exception:
-            t_param = re.search(r"teacher=([^&`]+)", teacher_url)
-            teacher_name = unquote(t_param.group(1)).replace("+", " ") if t_param else "Teacher"
-
-        # Lecture Cards (broad XPATH matching to cover class variations)
-        cards = driver.find_elements(
-            By.XPATH, "//div[contains(@class, 'content-card')] | //div[contains(@class, 'card')]"
-        )
-        lectures = []
-
-        for card in cards:
-            # Title
+            # Teacher Name
+            teacher_name = ""
             try:
-                lecture_title = card.find_element(By.XPATH, ".//h3 | .//h4 | .//strong").text.strip()
+                name_elem = driver.find_element(By.XPATH, "//h1 | //h2 | //h3 | //*[contains(@class, 'teacher')]")
+                teacher_name = name_elem.text.strip()
             except Exception:
+                pass
+
+            if not teacher_name:
+                t_param = re.search(r"teacher=([^&`]+)", teacher_url)
+                teacher_name = unquote(t_param.group(1)).replace("+", " ") if t_param else "Teacher"
+
+            # Lectures
+            cards = driver.find_elements(By.XPATH, "//div[contains(@class, 'card')] | //div[contains(@class, 'content')] | //tr")
+            lectures = []
+
+            for card in cards:
+                card_text = card.text.strip()
+                if not card_text:
+                    continue
+
+                # Title
                 lecture_title = "Untitled Lecture"
+                try:
+                    title_sub = card.find_element(By.XPATH, ".//h3 | .//h4 | .//h5 | .//strong | .//b")
+                    lecture_title = title_sub.text.strip()
+                except Exception:
+                    lines = [line.strip() for line in card_text.split("\n") if line.strip()]
+                    if lines:
+                        lecture_title = lines[0]
 
-            # Date
-            lecture_date = ""
-            try:
-                date_elem = card.find_element(
-                    By.XPATH, ".//div[contains(@class, 'content-meta')] | .//span[contains(@class, 'date')]"
-                )
-                lecture_date = date_elem.text.strip()
-            except Exception:
-                date_match = re.search(r"([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})", card.text)
+                # Date
+                lecture_date = "Unknown Date"
+                date_match = re.search(r"([A-Za-z]{3}\s+\d{1,2},\s+\d{4}|\d{2}[-/\.]\d{2}[-/\.]\d{4}|\d{4}[-/\.]\d{2}[-/\.]\d{2})", card_text)
                 if date_match:
                     lecture_date = date_match.group(1)
 
-            # Video URL
-            video_url = ""
-            try:
-                v_btn = card.find_element(By.XPATH, ".//*[contains(@onclick, 'openPlayerPopup')]")
-                onclick_val = v_btn.get_attribute("onclick") or ""
-                v_match = re.search(r"openPlayerPopup\('([^']+)'", onclick_val)
-                if v_match:
-                    video_url = unquote(v_match.group(1))
-            except Exception:
-                pass
+                # Video URL
+                video_url = ""
+                try:
+                    v_elem = card.find_element(By.XPATH, ".//*[contains(@onclick, 'openPlayerPopup') or contains(@onclick, 'play') or contains(@href, 'mp4') or contains(@href, 'm3u8')]")
+                    onclick_val = v_elem.get_attribute("onclick") or v_elem.get_attribute("href") or ""
+                    v_match = re.search(r"(https?://[^\s'\"]+)", onclick_val)
+                    if v_match:
+                        video_url = unquote(v_match.group(1))
+                except Exception:
+                    pass
 
-            # PDF URL
-            pdf_url = ""
-            try:
-                p_btn = card.find_element(By.XPATH, ".//a[contains(@href, '.pdf') or contains(@class, 'pdf')]")
-                pdf_url = p_btn.get_attribute("href") or ""
-            except Exception:
-                pass
+                # PDF URL
+                pdf_url = ""
+                try:
+                    p_elem = card.find_element(By.XPATH, ".//a[contains(@href, '.pdf')]")
+                    pdf_url = p_elem.get_attribute("href") or ""
+                except Exception:
+                    pass
 
-            lectures.append({
-                "lecture_title": lecture_title,
-                "date": lecture_date if lecture_date else "Unknown Date",
-                "video_url": video_url,
-                "pdf_url": pdf_url
+                if video_url or pdf_url or len(lecture_title) > 3:
+                    lectures.append({
+                        "lecture_title": lecture_title,
+                        "date": lecture_date,
+                        "video_url": video_url,
+                        "pdf_url": pdf_url
+                    })
+
+            teachers_data.append({
+                "teacher_name": teacher_name,
+                "teacher_url": teacher_url,
+                "lectures": lectures
             })
 
-        teachers_data.append({
-            "teacher_name": teacher_name,
-            "teacher_url": teacher_url,
-            "lectures": lectures
-        })
-
-    driver.quit()
+    finally:
+        driver.quit()
 
     return batch_id, batch_title, teachers_data
 
