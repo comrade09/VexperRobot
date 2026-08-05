@@ -23,10 +23,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 def setup_driver():
     options = webdriver.ChromeOptions()
     
-    # --- CRITICAL FOR KOYEB/DOCKER ---
-    # Explicitly tell Selenium where Chrome is installed
-    options.binary_location = "/usr/bin/google-chrome"
-    # ---------------------------------
+    # --- KOYEB CHROMIUM SETTINGS ---
+    options.binary_location = "/usr/bin/chromium"
     
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
@@ -41,9 +39,12 @@ def setup_driver():
     options.add_experimental_option("prefs", prefs)
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    # Point directly to the driver installed by the Dockerfile
+    service = Service("/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=options)
+    
     return driver
-
+    
 def dismiss_telegram_popup(driver):
     try:
         wait = WebDriverWait(driver, 3)
