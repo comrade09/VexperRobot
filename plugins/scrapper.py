@@ -6,7 +6,7 @@ import asyncio
 from pyrogram import filters
 from pyrogram.enums import ParseMode
 from pyrogram.types import Message
-from bot import Bot # Assuming Bot is your Pyrogram Client from the sample
+from bot import Bot  # Uses your already running Bot instance
 
 # --- SELENIUM IMPORTS ---
 from selenium import webdriver
@@ -15,7 +15,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 # ==========================================
 # 1. SYNCHRONOUS SELENIUM FUNCTIONS
@@ -23,7 +22,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 def setup_driver():
     options = webdriver.ChromeOptions()
     
-    # --- KOYEB CHROMIUM SETTINGS ---
+    # Explicitly point to the Chromium binary installed by Docker
     options.binary_location = "/usr/bin/chromium"
     
     options.add_argument("--headless=new")
@@ -39,12 +38,12 @@ def setup_driver():
     options.add_experimental_option("prefs", prefs)
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     
-    # Point directly to the driver installed by the Dockerfile
+    # Point directly to the Chromium driver
     service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
     
     return driver
-    
+
 def dismiss_telegram_popup(driver):
     try:
         wait = WebDriverWait(driver, 3)
@@ -59,46 +58,47 @@ def dismiss_telegram_popup(driver):
             pass
 
 def scrape_lectures_and_pdfs(batch_name, subject_name):
-    """This function runs in a background thread."""
     driver = setup_driver()
     url = "https://uc-web.uc27.workers.dev/"
     extracted_data = []
 
     try:
+        print(f"[Scraper] Navigating to {url}...")
         driver.get(url)
-        wait = WebDriverWait(driver, 15)
+        wait = WebDriverWait(driver, 20)
 
-        # Navigate to Batch
         time.sleep(2)
         dismiss_telegram_popup(driver)
         
+        print(f"[Scraper] Searching for batch: {batch_name}")
         batch_xpath = f"//a[contains(., '{batch_name}')] | //h3[contains(., '{batch_name}')] | //div[contains(text(), '{batch_name}')]"
         batch_card = wait.until(EC.element_to_be_clickable((By.XPATH, batch_xpath)))
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", batch_card)
         time.sleep(0.5)
         batch_card.click()
+        print(f"[Scraper] Successfully clicked batch!")
 
-        # Navigate to Subject
         time.sleep(2)
         dismiss_telegram_popup(driver)
         
+        print(f"[Scraper] Searching for subject: {subject_name}")
         subject_xpath = f"//*[text()='{subject_name}' or contains(text(), '{subject_name}')]"
-        subject_element = wait.until(EC.presence_of_element_located((By.XPATH, subject_xpath)))
+        subject_element = wait.until(EC.element_to_be_clickable((By.XPATH, subject_xpath)))
         
         driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", subject_element)
         time.sleep(1.5) 
         driver.execute_script("arguments[0].click();", subject_element)
+        print(f"[Scraper] Successfully clicked subject!")
 
         time.sleep(3) 
 
-        # Extract Links
         wait.until(EC.presence_of_all_elements_located((By.XPATH, "//button[contains(., 'Watch')]")))
         total_lectures = len(driver.find_elements(By.XPATH, "//button[contains(., 'Watch')]"))
+        print(f"[Scraper] Found {total_lectures} lecture(s). Extracting...")
 
         for index in range(total_lectures):
             pdf_info = "No PDF Available"
             
-            # Extract PDF Link
             try:
                 pdf_buttons = driver.find_elements(By.XPATH, "//button[contains(@class, 'btn-pdf')]")
                 if index < len(pdf_buttons):
@@ -118,7 +118,6 @@ def scrape_lectures_and_pdfs(batch_name, subject_name):
             except Exception:
                 pdf_info = "Error capturing PDF"
 
-            # Extract Video Link
             video_src = ""
             try:
                 watch_buttons = driver.find_elements(By.XPATH, "//button[contains(., 'Watch')]")
@@ -130,7 +129,7 @@ def scrape_lectures_and_pdfs(batch_name, subject_name):
 
                 video_element = wait.until(EC.presence_of_element_located((By.ID, "videoPlayer")))
 
-                for _ in range(20): 
+                for _ in range(25): 
                     video_src = video_element.get_attribute("src")
                     if video_src and "uamedia.uacdn.net" in video_src:
                         break
@@ -144,7 +143,6 @@ def scrape_lectures_and_pdfs(batch_name, subject_name):
                 "pdf": pdf_info
             })
 
-            # Close Modal
             try:
                 close_btn = driver.find_element(By.XPATH, "//div[@id='videoModal']//button | //div[@id='videoModal']//*[name()='svg'] | //div[contains(@class, 'modal-head')]/div")
                 driver.execute_script("arguments[0].click();", close_btn)
@@ -163,7 +161,7 @@ def scrape_lectures_and_pdfs(batch_name, subject_name):
 # ==========================================
 # 2. ASYNC PYROGRAM HANDLER
 # ==========================================
-@Bot.on_message(filters.command("scrape"),group=25198)
+@Bot.on_message(filters.command("scrape"), group=25198)
 async def handle_scrape_command(client: Bot, message: Message):
     command_args = message.text.replace('/scrape', '').strip()
     
@@ -182,14 +180,12 @@ async def handle_scrape_command(client: Bot, message: Message):
     )
 
     try:
-        # Run the synchronous Selenium code in a background thread to prevent bot freezing
         data = await asyncio.to_thread(scrape_lectures_and_pdfs, batch_name, subject_name)
         
         if data:
             safe_subject_name = subject_name.replace(" ", "_").lower()
             filename = f"{safe_subject_name}_full_data.txt"
 
-            # Write data to text file
             with open(filename, "w", encoding="utf-8") as file:
                 for item in data:
                     file.write(f"Lecture {item['lecture']}:\n")
@@ -197,18 +193,15 @@ async def handle_scrape_command(client: Bot, message: Message):
                     file.write(f"PDF URL:   {item['pdf']}\n")
                     file.write("-" * 50 + "\n")
 
-            # Send the file back to the user
             await message.reply_document(
                 document=filename,
                 caption=f"✅ Scraped **{len(data)}** lectures for **{subject_name}**!",
                 parse_mode=ParseMode.MARKDOWN
             )
             
-            # Clean up the file from the server
             if os.path.exists(filename):
                 os.remove(filename)
                 
-            # Delete the "processing" message
             await status_msg.delete()
 
         else:
