@@ -38,13 +38,14 @@ def setup_driver():
     options.add_experimental_option("prefs", prefs)
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
     
-    # Point directly to the Chromium driver
+    # --- FIX IS HERE ---
+    # Use the system's pre-installed ChromeDriver directly (No webdriver-manager needed)
     service = Service("/usr/bin/chromedriver")
     driver = webdriver.Chrome(service=service, options=options)
     
     return driver
-
-def dismiss_telegram_popup(driver):
+    
+    def dismiss_telegram_popup(driver):
     try:
         wait = WebDriverWait(driver, 3)
         close_btn = wait.until(
