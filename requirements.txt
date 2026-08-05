@@ -9,6 +9,7 @@ cloudscraper
 # --- For-Web-Response ------- #
 aiohttp
 pytz
+curl_cffi
 humanize
 requests
 telethon
