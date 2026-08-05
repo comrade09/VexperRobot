@@ -50,16 +50,14 @@ def run_selenium_scraper(batch_url: str):
     # Sanitize incoming batch_url string (strips backticks, quotes, and whitespace)
     batch_url = batch_url.strip("`'\" \t\n\r")
 
-    driver = setup_driver()
-
     # Clean batch_id extraction (strictly captures alphanumeric characters)
     batch_id_match = re.search(r"batch_id=([a-zA-Z0-9]+)", batch_url)
     batch_id = batch_id_match.group(1) if batch_id_match else "Unknown"
 
-    # Reconstruct clean batch_url to prevent navigating to malformed URLs
     if batch_id != "Unknown":
         batch_url = f"https://studyuk.online/offline/batch-details.php?batch_id={batch_id}"
 
+    driver = setup_driver()
     driver.get(batch_url)
 
     # 1. Wait for page body to fully load
@@ -78,14 +76,17 @@ def run_selenium_scraper(batch_url: str):
     except Exception:
         batch_title = f"Batch_{batch_id}"
 
-    # 3. Scroll to trigger lazy loading of elements
+    # 3. Scroll down to trigger lazy loading of elements
     for _ in range(6):
         driver.execute_script("window.scrollBy(0, 800);")
         time.sleep(0.5)
 
-    # 4. DOM-based search with expanded selectors
+    driver.execute_script("window.scrollTo(0, 0);")
+    time.sleep(0.5)
+
+    # 4. DOM-based search with flexible matching for teacher detail links
     teacher_urls = []
-    elements = driver.find_elements(
+    teacher_elements = driver.find_elements(
         By.XPATH, 
         "//a[contains(@href, 'teacher-detail.php')] | "
         "//*[contains(@onclick, 'teacher-detail.php')] | "
@@ -93,12 +94,13 @@ def run_selenium_scraper(batch_url: str):
         "//div[contains(@class, 'teacher')]//a"
     )
     
-    for elem in elements:
+    for elem in teacher_elements:
         href = elem.get_attribute("href") or ""
         onclick = elem.get_attribute("onclick") or ""
         target = href if "teacher-detail.php" in href else onclick
         
         if target:
+            # Capture teacher parameter regardless of order or surrounding quotes
             match = re.search(r"teacher=([^'\"\s&`]+)", target)
             if match:
                 teacher_param = match.group(1)
@@ -106,7 +108,7 @@ def run_selenium_scraper(batch_url: str):
                 if t_url not in teacher_urls:
                     teacher_urls.append(t_url)
 
-    # 5. Regex Fallback: Search direct page HTML if DOM elements were missed
+    # 5. Regex Fallback: Scan direct page source if DOM elements were missed
     if not teacher_urls:
         page_source = driver.page_source
         matches = re.findall(r"teacher-detail\.php\?[^'\"\s>]*teacher=([^'\"\s&<>`]+)", page_source)
@@ -141,7 +143,7 @@ def run_selenium_scraper(batch_url: str):
             t_param = re.search(r"teacher=([^&`]+)", teacher_url)
             teacher_name = unquote(t_param.group(1)).replace("+", " ") if t_param else "Teacher"
 
-        # Lecture Cards
+        # Lecture Cards (broad XPATH matching to cover class variations)
         cards = driver.find_elements(
             By.XPATH, "//div[contains(@class, 'content-card')] | //div[contains(@class, 'card')]"
         )
@@ -224,7 +226,6 @@ async def handle_admin_text(bot: Bot, message: Message):
     state = user_states.get(user_id)
 
     if state == "WAITING_FOR_BATCH_URL":
-        # Strip backticks or quotes if passed accidentally by admin
         url = message.text.strip("`'\" \t\n\r")
         if "batch_id=" not in url:
             await message.reply_text("❌ Invalid link! Must contain `batch_id=` parameter.")
@@ -236,7 +237,6 @@ async def handle_admin_text(bot: Bot, message: Message):
         try:
             batch_id, batch_title, teachers_data = await asyncio.to_thread(run_selenium_scraper, url)
             
-            # Save scraped data to MongoDB using clean batch_url
             clean_url = f"https://studyuk.online/offline/batch-details.php?batch_id={batch_id}"
             await update_batch_data(
                 batch_id=batch_id,
@@ -246,7 +246,11 @@ async def handle_admin_text(bot: Bot, message: Message):
                 last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
             
-            await status_msg.edit_text(f"✅ **Batch Successfully Saved!**\n\n📌 **Title:** `{batch_title}`\n👨‍🏫 **Teachers Scraped:** {len(teachers_data)}")
+            await status_msg.edit_text(
+                f"✅ **Batch Successfully Saved!**\n\n"
+                f"📌 **Title:** `{batch_title}`\n"
+                f"👨‍🏫 **Teachers Scraped:** {len(teachers_data)}"
+            )
         except Exception as e:
             await status_msg.edit_text(f"❌ **Error while scraping:**\n`{e}`")
 
@@ -313,7 +317,11 @@ async def cb_handler(bot: Bot, query: CallbackQuery):
                 last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
             
-            await query.message.edit_text(f"✅ **Update Complete!**\n\n📌 **Title:** `{title}`\n👨‍🏫 **Teachers Updated:** {len(teachers_data)}")
+            await query.message.edit_text(
+                f"✅ **Update Complete!**\n\n"
+                f"📌 **Title:** `{title}`\n"
+                f"👨‍🏫 **Teachers Updated:** {len(teachers_data)}"
+            )
         except Exception as e:
             await query.message.edit_text(f"❌ **Update Failed:**\n`{e}`")
 
