@@ -1,3 +1,4 @@
+import os
 import re
 import time
 import asyncio
@@ -47,8 +48,22 @@ def _clean_text(s):
 
 def _fetch(url, timeout=30):
     resp = requests.get(url, headers=HEADERS, timeout=timeout)
-    resp.raise_for_status()
+    if resp.status_code != 200:
+        raise RuntimeError(f"HTTP {resp.status_code} for {url}")
+    if "Just a moment" in resp.text[:600]:
+        raise RuntimeError(f"Cloudflare challenge for {url}")
     return resp.text
+
+
+def _fetch_with_retry(url, tries=3, timeout=30):
+    last = None
+    for i in range(tries):
+        try:
+            return _fetch(url, timeout=timeout)
+        except Exception as e:
+            last = e
+            time.sleep(1.5 * (i + 1))
+    raise last
 
 
 def get_batch_titles():
@@ -142,7 +157,17 @@ def setup_driver():
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     )
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    # Prefer a system-installed chromedriver (Docker: chromium/chromium-driver),
+    # otherwise fall back to webdriver-manager downloading one.
+    service = None
+    for path in ("/usr/bin/chromedriver", "/usr/local/bin/chromedriver", "/snap/bin/chromedriver"):
+        if os.path.exists(path):
+            service = Service(path)
+            break
+    if service is None:
+        service = Service(ChromeDriverManager().install())
+
+    driver = webdriver.Chrome(service=service, options=options)
 
     # Conceal webdriver presence
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -277,6 +302,7 @@ def run_selenium_scraper(batch_url: str):
         clean_url = batch_url
 
     batch_title = f"Batch_{batch_id}"
+    errors = []
 
     # Try the fast HTTP scraper first
     try:
@@ -284,7 +310,7 @@ def run_selenium_scraper(batch_url: str):
         if batch_id in titles:
             batch_title = titles[batch_id]
 
-        html = _fetch(clean_url)
+        html = _fetch_with_retry(clean_url)
         if "teacher-card" not in html and "teacher-detail.php" not in html:
             raise RuntimeError("Page not fully loaded (challenge or block)")
 
@@ -294,18 +320,29 @@ def run_selenium_scraper(batch_url: str):
 
         teachers_data = []
         for teacher_url in teacher_urls:
-            teachers_data.append(parse_teacher_page(teacher_url))
-            time.sleep(0.3)
+            try:
+                teachers_data.append(parse_teacher_page(teacher_url))
+            except Exception as e:
+                errors.append(f"teacher {teacher_url.split('teacher=')[-1][:30]}: {e}")
+            time.sleep(0.8)
 
         if not teachers_data:
-            raise RuntimeError("No teacher data collected")
+            raise RuntimeError("All teacher pages failed: " + "; ".join(errors))
 
         return batch_id, batch_title, teachers_data
-    except Exception:
+    except Exception as e:
+        errors.append(f"HTTP path: {e}")
+
+    # Selenium fallback
+    try:
         teachers_data = _selenium_scrape(batch_id, clean_url, batch_title)
-        if not teachers_data:
-            raise RuntimeError("Scraping failed - both HTTP and Selenium returned no data")
-        return batch_id, batch_title, teachers_data
+        if teachers_data:
+            return batch_id, batch_title, teachers_data
+        errors.append("Selenium path: returned no data")
+    except Exception as e:
+        errors.append(f"Selenium path: {e}")
+
+    raise RuntimeError(" | ".join(errors))
 
 
 # --- ADMIN COMMANDS ---
