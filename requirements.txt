@@ -13,6 +13,7 @@ requests
 telethon
 pyrofork
 TgCrypto
+webdriver-manager
 humanize
 motor
 dnspython
