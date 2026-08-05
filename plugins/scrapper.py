@@ -4,9 +4,7 @@ import json
 import time
 import random
 import asyncio
-import threading
 from urllib.parse import unquote
-from flask import Flask
 
 from pyrogram import filters
 from pyrogram.types import Message
@@ -18,27 +16,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# ==========================================
-# 1. DUMMY WEB SERVER (FOR KOYEB FREE TIER)
-# ==========================================
-# We start this in the background when the plugin loads
-web_app = Flask(__name__)
-
-@web_app.route('/')
-def health_check():
-    return "Bot is running and healthy!", 200
-
-def run_web_server():
-    port = int(os.environ.get("PORT", 8000))
-    # run with use_reloader=False so it doesn't duplicate threads in plugins
-    web_app.run(host="0.0.0.0", port=port, use_reloader=False)
-
-# Start the dummy server immediately in a background daemon thread
-threading.Thread(target=run_web_server, daemon=True).start()
-
 
 # ==========================================
-# 2. STEALTH SCRAPER LOGIC
+# 1. STEALTH SCRAPER LOGIC
 # ==========================================
 def setup_driver():
     options = uc.ChromeOptions()
@@ -56,7 +36,7 @@ def setup_driver():
     options.add_argument(f"user-agent={random.choice(user_agents)}")
     options.add_argument("--disable-blink-features=AutomationControlled")
     
-    # use_subprocess=True is CRITICAL for running in Koyeb's Docker environment as root
+    # use_subprocess=True is required for Docker environments running as root
     driver = uc.Chrome(options=options, version_main=None, use_subprocess=True) 
     return driver
 
@@ -192,10 +172,10 @@ def scrape_single_batch(batch_url):
 
 
 # ==========================================
-# 3. PYROGRAM BOT HANDLER
+# 2. PYROGRAM BOT HANDLER
 # ==========================================
 
-@Bot.on_message(filters.command("scrape"),group=8377)
+@Bot.on_message(filters.command("scrape"),group=8787)
 async def handle_scrape(client: Bot, message: Message):
     if len(message.command) < 2:
         await message.reply_text("⚠️ **Usage:** `/scrape <batch_url>`")
@@ -205,7 +185,6 @@ async def handle_scrape(client: Bot, message: Message):
     status_msg = await message.reply_text("⏳ **Scraping...**\n_Navigating Cloudflare checks (this takes ~10-15 seconds)..._")
     
     try:
-        # Run in thread so the bot doesn't freeze for other users
         txt_file, json_file, debug_img = await asyncio.to_thread(scrape_single_batch, url)
         
         if debug_img:
