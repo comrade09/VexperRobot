@@ -66,11 +66,11 @@ async def handle_json_file(client: Bot, message: Message):
                         
         await msg.edit_text(
             "✅ Database updated successfully! All new and previous links have been merged and sorted.",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.MARKDOWN
         )
         
     except Exception as e:
-        await msg.edit_text(f"❌ Error parsing JSON: <code>{str(e)}</code>", parse_mode=ParseMode.HTML)
+        await msg.edit_text(f"❌ Error parsing JSON: `{str(e)}`", parse_mode=ParseMode.MARKDOWN)
     finally:
         UPLOAD_STATE[message.from_user.id] = False
         if os.path.exists(file_path):
@@ -89,35 +89,64 @@ async def batches_command(client: Bot, message: Message):
     for b in batches:
         b_id = b.get("batch_id")
         b_name = BATCH_MAP.get(b_id, b.get("batch_title", f"Batch {b_id}"))
-        buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}")])
+        # We append _0 to signify page 0 for teachers
+        buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}_0")])
     
     await message.reply_text(
-        "📚 <b>Select a Batch:</b>",
+        "📚 **Select a Batch:**",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.MARKDOWN
     )
 
-# --- 3. Teachers Menu (2 Rows Array) ---
-@Bot.on_callback_query(filters.regex(r"^bch_(.*)"), group=3653)
+# --- 3. Teachers Menu (Paginated & 2 Columns) ---
+# Regex captures batch_id, and optionally the page number if it exists
+@Bot.on_callback_query(filters.regex(r"^bch_([^_]+)(?:_(\d+))?$"), group=3653)
 async def show_teachers(client: Bot, callback_query: CallbackQuery):
     batch_id = callback_query.matches[0].group(1)
+    
+    # Safely handle older buttons that might not have a page number attached
+    page_str = callback_query.matches[0].group(2)
+    page = int(page_str) if page_str else 0
+    
     batch = await get_batch(batch_id)
     
     if not batch or not batch.get("teachers"):
         await callback_query.answer("No teachers found for this batch.", show_alert=True)
         return
 
-    # First, collect all teacher buttons in a flat list
-    teacher_buttons = []
-    for idx, teacher in enumerate(batch["teachers"]):
-        raw_name = teacher.get("teacher_name", f"Teacher {idx+1}")
-        clean_name = raw_name.split("\n")[0].strip()
-        teacher_buttons.append(InlineKeyboardButton(clean_name, callback_data=f"tch_{batch_id}_{idx}_0"))
+    all_teachers = batch["teachers"]
+    total_teachers = len(all_teachers)
     
-    # Group them into columns of TWO
+    # 10 teachers per page (5 rows of 2)
+    limit = 10 
+    skip = page * limit
+    
+    # Slice the teachers for the current page
+    page_teachers = all_teachers[skip:skip+limit]
+
+    # First, collect all teacher buttons for this page in a flat list
+    teacher_buttons = []
+    for i, teacher in enumerate(page_teachers):
+        # Calculate the true index in the main list to keep routing correct
+        true_idx = skip + i
+        raw_name = teacher.get("teacher_name", f"Teacher {true_idx+1}")
+        clean_name = raw_name.split("\n")[0].strip()
+        teacher_buttons.append(InlineKeyboardButton(clean_name, callback_data=f"tch_{batch_id}_{true_idx}_0"))
+    
+    # Group them into pairs (2 buttons per row)
     buttons = []
     for i in range(0, len(teacher_buttons), 2):
         buttons.append(teacher_buttons[i:i+2])
+        
+    # Navigation Buttons for Teachers List
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"bch_{batch_id}_{page-1}"))
+    if skip + limit < total_teachers:
+        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"bch_{batch_id}_{page+1}"))
+        
+    if nav_buttons:
+        buttons.append(nav_buttons)
         
     # Finally, add the back button on its own row at the bottom
     buttons.append([InlineKeyboardButton("⬅️ Back to Batches", callback_data="back_to_batches")])
@@ -125,9 +154,9 @@ async def show_teachers(client: Bot, callback_query: CallbackQuery):
     batch_name = BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id))
 
     await callback_query.message.edit_text(
-        f"👨‍🏫 <b>Teachers for {batch_name}:</b>\nSelect a teacher to view their classes.",
+        f"👨‍🏫 **Teachers for {batch_name}:**\nSelect a teacher to view their classes.",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.MARKDOWN
     )
 
 @Bot.on_callback_query(filters.regex(r"^back_to_batches$"), group=4763)
@@ -137,12 +166,12 @@ async def back_to_batches_callback(client: Bot, callback_query: CallbackQuery):
     for b in batches:
         b_id = b.get("batch_id")
         b_name = BATCH_MAP.get(b_id, b.get("batch_title", f"Batch {b_id}"))
-        buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}")])
+        buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}_0")])
         
     await callback_query.message.edit_text(
-        "📚 <b>Select a Batch:</b>",
+        "📚 **Select a Batch:**",
         reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.MARKDOWN
     )
 
 # --- 4. Lectures Menu (Paginated, Sorted & Safe URLs) ---
@@ -169,12 +198,11 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
 
     batch_name = BATCH_MAP.get(batch_id, batch.get("batch_title", batch_id))
     
-    # Using HTML for safer text rendering
-    text = f"<b>📖 Lectures by {teacher_name}</b>\n<b>Batch:</b> {batch_name}\n\n"
+    text = f"**📖 Lectures by {teacher_name}**\n**Batch:** {batch_name}\n\n"
     
     for lec in page_lectures:
-        text += f"🗓 <b>Date:</b> <code>{lec.get('date', 'Unknown')}</code>\n"
-        text += f"📝 <b>Title:</b> <code>{lec.get('lecture_title', 'Untitled')}</code>\n"
+        text += f"🗓 **Date:** `{lec.get('date', 'Unknown')}`\n"
+        text += f"📝 **Title:** `{lec.get('lecture_title', 'Untitled')}`\n"
         
         # Safely extract URLs
         vid_url = lec.get("video_url", "")
@@ -182,18 +210,18 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
         
         links = []
         if vid_url and vid_url.startswith("http"):
-            links.append(f"🎬 <a href='{vid_url}'>Watch Video</a>")
+            links.append(f"🎬 [Watch Video]({vid_url})")
         
         if pdf_url and pdf_url.startswith("http"):
-            links.append(f"📥 <a href='{pdf_url}'>Download PDF</a>")
+            links.append(f"📥 [Download PDF]({pdf_url})")
             
         # Add links to text if they exist
         if links:
             text += " | ".join(links) + "\n\n"
         else:
-            text += "🚫 <i>No links available</i>\n\n"
+            text += "🚫 *No links available*\n\n"
         
-    # Navigation Buttons
+    # Navigation Buttons for Lectures list
     nav_buttons = []
     if page > 0:
         nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"tch_{batch_id}_{teacher_idx}_{page-1}"))
@@ -204,11 +232,12 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
     if nav_buttons:
         buttons.append(nav_buttons)
         
-    buttons.append([InlineKeyboardButton("⬅️ Back to Teachers", callback_data=f"bch_{batch_id}")])
+    # Back button goes to page 0 of that specific batch's teacher list
+    buttons.append([InlineKeyboardButton("⬅️ Back to Teachers", callback_data=f"bch_{batch_id}_0")])
 
     await callback_query.message.edit_text(
         text,
         reply_markup=InlineKeyboardMarkup(buttons),
         disable_web_page_preview=True,
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.MARKDOWN
     )
