@@ -1,4 +1,5 @@
-import pymongo, os
+import pymongo
+import os
 from config import DB_URI, DB_NAME
 from bson import ObjectId
 
@@ -6,10 +7,15 @@ dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
 
 user_data = database['users']
-# New collection for tracking person accounts
 accounts_data = database['accounts']
 
-async def present_user(user_id : int):
+# New collection for study batches
+batches_data = database['batches']
+
+
+# --- ORIGINAL USER FUNCTIONS ---
+
+async def present_user(user_id: int):
     found = user_data.find_one({'_id': user_id})
     if found:
         return True
@@ -32,7 +38,8 @@ async def del_user(user_id: int):
     user_data.delete_one({'_id': user_id})
     return
 
-# --- NEW ACCOUNTS LOGIC (DO NOT REMOVE ABOVE FUNCTIONS) ---
+
+# --- ACCOUNTS LOGIC ---
 
 async def add_new_person(user_id: int, name: str):
     accounts_data.insert_one({
@@ -88,3 +95,44 @@ async def get_total_stats(user_id: int):
     if result:
         return result[0].get("total_spending", 0.0), result[0].get("total_debt", 0.0)
     return 0.0, 0.0
+
+
+# --- NEW BATCHES LOGIC FOR TELEGRAM BOT ---
+
+async def add_batch(batch_id: str, batch_title: str, batch_url: str):
+    """Inserts a new batch shell or updates the existing batch basic info."""
+    batches_data.update_one(
+        {"batch_id": batch_id},
+        {
+            "$set": {
+                "batch_id": batch_id,
+                "batch_title": batch_title,
+                "batch_url": batch_url
+            }
+        },
+        upsert=True
+    )
+
+async def get_batch(batch_id: str):
+    """Retrieves a single batch document by batch_id."""
+    return batches_data.find_one({"batch_id": batch_id})
+
+async def get_all_batches():
+    """Retrieves all batches stored in the database."""
+    return list(batches_data.find({}, {"_id": 0}))
+
+async def update_batch_data(batch_id: str, batch_title: str, batch_url: str, teachers: list, last_updated: str):
+    """Upserts full batch scrap details including teachers, lectures, and dates."""
+    batches_data.update_one(
+        {"batch_id": batch_id},
+        {
+            "$set": {
+                "batch_id": batch_id,
+                "batch_title": batch_title,
+                "batch_url": batch_url,
+                "teachers": teachers,
+                "last_updated": last_updated
+            }
+        },
+        upsert=True
+    )
