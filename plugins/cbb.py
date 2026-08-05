@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from pyrogram.enums import ParseMode # <-- Added ParseMode import
+from pyrogram.enums import ParseMode
 from bot import Bot
 from config import OWNER_ID
 from helper_func import subscribed
@@ -97,7 +97,7 @@ async def batches_command(client: Bot, message: Message):
         parse_mode=ParseMode.MARKDOWN
     )
 
-# --- 3. Teachers Menu ---
+# --- 3. Teachers Menu (2 Rows) ---
 @Bot.on_callback_query(filters.regex(r"^bch_(.*)"), group=3653)
 async def show_teachers(client: Bot, callback_query: CallbackQuery):
     batch_id = callback_query.matches[0].group(1)
@@ -114,7 +114,7 @@ async def show_teachers(client: Bot, callback_query: CallbackQuery):
         clean_name = raw_name.split("\n")[0].strip()
         teacher_buttons.append(InlineKeyboardButton(clean_name, callback_data=f"tch_{batch_id}_{idx}_0"))
     
-    # Then group them into pairs (2 buttons per row)
+    # Group them into pairs (2 buttons per row)
     buttons = []
     for i in range(0, len(teacher_buttons), 2):
         buttons.append(teacher_buttons[i:i+2])
@@ -145,7 +145,7 @@ async def back_to_batches_callback(client: Bot, callback_query: CallbackQuery):
         parse_mode=ParseMode.MARKDOWN
     )
 
-# --- 4. Lectures Menu (Paginated & Sorted) ---
+# --- 4. Lectures Menu (Paginated, Sorted & Safe URLs) ---
 @Bot.on_callback_query(filters.regex(r"^tch_(.*)_(.*)_(.*)"), group=8547)
 async def show_lectures(client: Bot, callback_query: CallbackQuery):
     batch_id = callback_query.matches[0].group(1)
@@ -173,7 +173,23 @@ async def show_lectures(client: Bot, callback_query: CallbackQuery):
     for lec in page_lectures:
         text += f"🗓 **Date:** `{lec.get('date', 'Unknown')}`\n"
         text += f"📝 **Title:** `{lec.get('lecture_title', 'Untitled')}`\n"
-        text += f"🎬 [Watch Video]({lec.get('video_url')}) | 📥 [Download PDF]({lec.get('pdf_url')})\n\n"
+        
+        # Safely extract URLs
+        vid_url = lec.get("video_url", "")
+        pdf_url = lec.get("pdf_url", "")
+        
+        links = []
+        if vid_url and vid_url.startswith("http"):
+            links.append(f"🎬 [Watch Video]({vid_url})")
+        
+        if pdf_url and pdf_url.startswith("http"):
+            links.append(f"📥 [Download PDF]({pdf_url})")
+            
+        # Add links to text if they exist
+        if links:
+            text += " | ".join(links) + "\n\n"
+        else:
+            text += "🚫 *No links available*\n\n"
         
     # Navigation Buttons
     nav_buttons = []
