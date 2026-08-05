@@ -1,9 +1,11 @@
-import os
 import re
 import time
 import asyncio
+import html as html_mod
 from urllib.parse import unquote
 from datetime import datetime
+
+import requests
 
 from pyrogram import filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
@@ -19,16 +21,109 @@ from webdriver_manager.chrome import ChromeDriverManager
 from config import OWNER_ID
 from bot import Bot
 from database.database import (
-    get_all_batches, 
-    get_batch, 
+    get_all_batches,
+    get_batch,
     update_batch_data
 )
 
 # Temporary memory to track admin input state
 user_states = {}
 
+BASE = "https://studyuk.online/offline"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+}
 
-# --- ADVANCED ANTI-DETECTION SELENIUM DRIVER ---
+
+# --- HTTP SCRAPER (primary, fast, no browser needed) ---
+
+def _clean_text(s):
+    s = re.sub(r"<[^>]+>", " ", s or "")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _fetch(url, timeout=30):
+    resp = requests.get(url, headers=HEADERS, timeout=timeout)
+    resp.raise_for_status()
+    return resp.text
+
+
+def get_batch_titles():
+    """Map batch_id -> real batch title from batches.php."""
+    try:
+        page = _fetch(f"{BASE}/batches.php")
+    except Exception:
+        return {}
+    mapping = {}
+    for card in re.finditer(r'<div class="batch-card"[^>]*>', page):
+        block = card.group(0)
+        bid = re.search(r'data-batch-id="([^"]+)"', block)
+        bname = re.search(r'data-batch-name="([^"]+)"', block)
+        if bid and bname:
+            mapping[bid.group(1)] = html_mod.unescape(bname.group(1))
+    return mapping
+
+
+def parse_teacher_urls(batch_html):
+    urls = []
+    for m in re.finditer(r'href="([^"]*teacher-detail\.php[^"]*)"', batch_html):
+        href = html_mod.unescape(m.group(1))
+        if "teacher=" not in href or "batch_id=" not in href:
+            continue
+        url = href if href.startswith("http") else f"{BASE}/{href.lstrip('/')}"
+        if url not in urls:
+            urls.append(url)
+    return urls
+
+
+def parse_teacher_page(url):
+    page = _fetch(url)
+    page = re.sub(r"<!--.*?-->", "", page, flags=re.S)
+
+    name_m = re.search(r'<h1 class="teacher-title">([^<]*)</h1>', page)
+    teacher_name = _clean_text(name_m.group(1)) if name_m else "Teacher"
+
+    lectures = []
+    cards = re.findall(
+        r'<div class="content-card">(.*?)<div class="content-actions">(.*?)</div>\s*</div>',
+        page,
+        re.S,
+    )
+    for top, actions in cards:
+        title_m = re.search(r'<h3 class="content-title">(.*?)</h3>', top, re.S)
+        lecture_title = _clean_text(title_m.group(1)) if title_m else "Untitled Lecture"
+
+        date_m = re.search(r"([A-Za-z]{3}\s+\d{1,2},\s+\d{4})", top)
+        lecture_date = date_m.group(1) if date_m else "Unknown Date"
+
+        video_url = ""
+        v_m = re.search(r"openPlayerPopup\(\s*'([^']+)'", actions)
+        if v_m:
+            video_url = unquote(v_m.group(1))
+
+        pdf_url = ""
+        p_m = re.search(r'href="([^"]+\.pdf)"', actions)
+        if p_m:
+            pdf_url = html_mod.unescape(p_m.group(1))
+
+        lectures.append({
+            "lecture_title": lecture_title,
+            "date": lecture_date,
+            "video_url": video_url,
+            "pdf_url": pdf_url,
+        })
+
+    return {
+        "teacher_name": teacher_name,
+        "teacher_url": url,
+        "lectures": lectures,
+    }
+
+
+# --- ADVANCED ANTI-DETECTION SELENIUM DRIVER (fallback) ---
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -37,7 +132,7 @@ def setup_driver():
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-    
+
     # Anti-bot bypass settings
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -46,77 +141,51 @@ def setup_driver():
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     )
-    
+
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    
+
     # Conceal webdriver presence
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     return driver
 
 
-def run_selenium_scraper(batch_url: str):
-    # Sanitize incoming batch_url string
-    batch_url = batch_url.strip("`'\" \t\n\r")
-
-    # Clean batch_id extraction
-    batch_id_match = re.search(r"batch_id=([a-zA-Z0-9]+)", batch_url)
-    batch_id = batch_id_match.group(1) if batch_id_match else "Unknown"
-
-    if batch_id != "Unknown":
-        batch_url = f"https://studyuk.online/offline/batch-details.php?batch_id={batch_id}"
-
+def _selenium_scrape(batch_id, batch_url, batch_title):
+    """Fallback scraper. Waits out Cloudflare and uses precise selectors."""
     driver = setup_driver()
-    
     try:
         driver.get(batch_url)
 
-        # 1. Wait up to 15 seconds for page load / Cloudflare pass
-        time.sleep(3)
-        for _ in range(3):
-            driver.execute_script("window.scrollBy(0, 500);")
-            time.sleep(1)
-
-        # 2. Extract Batch Title
-        batch_title = ""
+        # Wait until the real page renders (Cloudflare challenge disappears)
         try:
-            title_elem = driver.find_element(By.XPATH, "//h1 | //h2 | //title | //*[contains(@class, 'title')]")
-            batch_title = title_elem.text.strip()
+            WebDriverWait(driver, 60).until(
+                EC.presence_of_element_located((By.XPATH, "//a[contains(@href, 'teacher-detail.php')]"))
+            )
         except Exception:
             pass
 
-        if not batch_title or "Just a moment" in batch_title or "Attention Required" in batch_title:
-            batch_title = f"Batch_{batch_id}"
+        title_elem = driver.find_elements(By.XPATH, "//h1[contains(@class, 'batch-title')] | //title")
+        page_title = _clean_text(title_elem[0].text) if title_elem else ""
+        if page_title and "Just a moment" not in page_title and "Attention Required" not in page_title \
+                and page_title.lower() not in ("teachers", "batch details | study uk"):
+            batch_title = page_title
 
-        # 3. Extract Teacher URLs - Multi-strategy search
+        # Teachers: only anchors that really point to a teacher-detail page
         teacher_urls = []
-
-        # Strategy A: Scan all links and clickable elements in DOM
-        elements = driver.find_elements(By.XPATH, "//*[@href or @onclick]")
-        for elem in elements:
-            href = elem.get_attribute("href") or ""
-            onclick = elem.get_attribute("onclick") or ""
-            combined = href + " " + onclick
-            
-            if "teacher" in combined:
-                match = re.search(r"teacher=([^'\"\s&`]+)", combined)
-                if match:
-                    t_param = match.group(1)
-                    t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={t_param}"
-                    if t_url not in teacher_urls:
-                        teacher_urls.append(t_url)
+        for elem in driver.find_elements(By.XPATH, "//a[contains(@href, 'teacher-detail.php')]"):
+            href = elem.get_attribute("href")
+            if href and "teacher=" in href and href not in teacher_urls:
+                teacher_urls.append(href)
 
         # Strategy B: Direct page HTML regex search (catches hidden scripts/JS state objects)
         page_source = driver.page_source
-        matches = re.findall(r"teacher[=\-_]([^'\"\s&<>`/\\]+)", page_source, re.IGNORECASE)
+        matches = re.findall(r"teacher=([A-Za-z0-9%+\-\.]+)", page_source)
         for t_param in set(matches):
             if len(t_param) > 1 and t_param.lower() not in ["detail.php", "detail", "index", "php"]:
-                t_url = f"https://studyuk.online/offline/teacher-detail.php?batch_id={batch_id}&teacher={t_param}"
+                t_url = f"{BASE}/teacher-detail.php?batch_id={batch_id}&teacher={t_param}"
                 if t_url not in teacher_urls:
                     teacher_urls.append(t_url)
 
         teachers_data = []
-
-        # 4. Scrape each teacher detail page
         for teacher_url in teacher_urls:
             driver.get(teacher_url)
             time.sleep(2)
@@ -128,7 +197,7 @@ def run_selenium_scraper(batch_url: str):
             # Teacher Name
             teacher_name = ""
             try:
-                name_elem = driver.find_element(By.XPATH, "//h1 | //h2 | //h3 | //*[contains(@class, 'teacher')]")
+                name_elem = driver.find_element(By.XPATH, "//h1[contains(@class, 'teacher-title')]")
                 teacher_name = name_elem.text.strip()
             except Exception:
                 pass
@@ -138,42 +207,37 @@ def run_selenium_scraper(batch_url: str):
                 teacher_name = unquote(t_param.group(1)).replace("+", " ") if t_param else "Teacher"
 
             # Lectures
-            cards = driver.find_elements(By.XPATH, "//div[contains(@class, 'card')] | //div[contains(@class, 'content')] | //tr")
+            cards = driver.find_elements(By.XPATH, "//div[contains(@class, 'content-card')]")
             lectures = []
-
             for card in cards:
                 card_text = card.text.strip()
                 if not card_text:
                     continue
 
-                # Title
                 lecture_title = "Untitled Lecture"
                 try:
-                    title_sub = card.find_element(By.XPATH, ".//h3 | .//h4 | .//h5 | .//strong | .//b")
+                    title_sub = card.find_element(By.XPATH, ".//h3[contains(@class, 'content-title')]")
                     lecture_title = title_sub.text.strip()
                 except Exception:
                     lines = [line.strip() for line in card_text.split("\n") if line.strip()]
                     if lines:
                         lecture_title = lines[0]
 
-                # Date
                 lecture_date = "Unknown Date"
-                date_match = re.search(r"([A-Za-z]{3}\s+\d{1,2},\s+\d{4}|\d{2}[-/\.]\d{2}[-/\.]\d{4}|\d{4}[-/\.]\d{2}[-/\.]\d{2})", card_text)
+                date_match = re.search(r"([A-Za-z]{3}\s+\d{1,2},\s+\d{4})", card_text)
                 if date_match:
                     lecture_date = date_match.group(1)
 
-                # Video URL
                 video_url = ""
                 try:
-                    v_elem = card.find_element(By.XPATH, ".//*[contains(@onclick, 'openPlayerPopup') or contains(@onclick, 'play') or contains(@href, 'mp4') or contains(@href, 'm3u8')]")
-                    onclick_val = v_elem.get_attribute("onclick") or v_elem.get_attribute("href") or ""
-                    v_match = re.search(r"(https?://[^\s'\"]+)", onclick_val)
+                    v_elem = card.find_element(By.XPATH, ".//*[contains(@onclick, 'openPlayerPopup')]")
+                    onclick_val = v_elem.get_attribute("onclick") or ""
+                    v_match = re.search(r"openPlayerPopup\(\s*'([^']+)'", onclick_val)
                     if v_match:
                         video_url = unquote(v_match.group(1))
                 except Exception:
                     pass
 
-                # PDF URL
                 pdf_url = ""
                 try:
                     p_elem = card.find_element(By.XPATH, ".//a[contains(@href, '.pdf')]")
@@ -194,11 +258,54 @@ def run_selenium_scraper(batch_url: str):
                 "teacher_url": teacher_url,
                 "lectures": lectures
             })
-
+        return teachers_data
     finally:
         driver.quit()
 
-    return batch_id, batch_title, teachers_data
+
+# --- MAIN SCRAPER (requests first, Selenium fallback) ---
+
+def run_selenium_scraper(batch_url: str):
+    batch_url = batch_url.strip("`'\" \t\n\r")
+
+    batch_id_match = re.search(r"batch_id=([a-zA-Z0-9]+)", batch_url)
+    batch_id = batch_id_match.group(1) if batch_id_match else "Unknown"
+
+    if batch_id != "Unknown":
+        clean_url = f"{BASE}/batch-details.php?batch_id={batch_id}"
+    else:
+        clean_url = batch_url
+
+    batch_title = f"Batch_{batch_id}"
+
+    # Try the fast HTTP scraper first
+    try:
+        titles = get_batch_titles()
+        if batch_id in titles:
+            batch_title = titles[batch_id]
+
+        html = _fetch(clean_url)
+        if "teacher-card" not in html and "teacher-detail.php" not in html:
+            raise RuntimeError("Page not fully loaded (challenge or block)")
+
+        teacher_urls = parse_teacher_urls(html)
+        if not teacher_urls:
+            raise RuntimeError("No teacher links found on batch page")
+
+        teachers_data = []
+        for teacher_url in teacher_urls:
+            teachers_data.append(parse_teacher_page(teacher_url))
+            time.sleep(0.3)
+
+        if not teachers_data:
+            raise RuntimeError("No teacher data collected")
+
+        return batch_id, batch_title, teachers_data
+    except Exception:
+        teachers_data = _selenium_scrape(batch_id, clean_url, batch_title)
+        if not teachers_data:
+            raise RuntimeError("Scraping failed - both HTTP and Selenium returned no data")
+        return batch_id, batch_title, teachers_data
 
 
 # --- ADMIN COMMANDS ---
@@ -232,8 +339,8 @@ async def handle_admin_text(bot: Bot, message: Message):
 
         try:
             batch_id, batch_title, teachers_data = await asyncio.to_thread(run_selenium_scraper, url)
-            
-            clean_url = f"https://studyuk.online/offline/batch-details.php?batch_id={batch_id}"
+
+            clean_url = f"{BASE}/batch-details.php?batch_id={batch_id}"
             await update_batch_data(
                 batch_id=batch_id,
                 batch_title=batch_title,
@@ -241,7 +348,7 @@ async def handle_admin_text(bot: Bot, message: Message):
                 teachers=teachers_data,
                 last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
-            
+
             await status_msg.edit_text(
                 f"✅ **Batch Successfully Saved!**\n\n"
                 f"📌 **Title:** `{batch_title}`\n"
@@ -299,12 +406,12 @@ async def cb_handler(bot: Bot, query: CallbackQuery):
             return await query.answer("Unauthorized", show_alert=True)
         batch_id = data.split("_")[1]
         batch = await get_batch(batch_id)
-        
+
         await query.message.edit_text(f"⏳ **Updating `{batch['batch_title']}`...**\nScraping new lectures in the background...")
         try:
             b_id, title, teachers_data = await asyncio.to_thread(run_selenium_scraper, batch['batch_url'])
-            
-            clean_url = f"https://studyuk.online/offline/batch-details.php?batch_id={b_id}"
+
+            clean_url = f"{BASE}/batch-details.php?batch_id={b_id}"
             await update_batch_data(
                 batch_id=b_id,
                 batch_title=title,
@@ -312,7 +419,7 @@ async def cb_handler(bot: Bot, query: CallbackQuery):
                 teachers=teachers_data,
                 last_updated=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
-            
+
             await query.message.edit_text(
                 f"✅ **Update Complete!**\n\n"
                 f"📌 **Title:** `{title}`\n"
@@ -324,7 +431,7 @@ async def cb_handler(bot: Bot, query: CallbackQuery):
     elif data.startswith("ubatch_"):
         batch_id = data.split("_")[1]
         batch = await get_batch(batch_id)
-        
+
         if not batch:
             return await query.answer("Batch not found.", show_alert=True)
 
