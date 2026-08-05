@@ -8,7 +8,7 @@ from config import OWNER_ID
 from helper_func import subscribed
 
 # Import your newly refactored database functions
-from database import update_batch_data, get_all_batches, get_batch
+from database.database import update_batch_data, get_all_batches, get_batch
 
 UPLOAD_STATE = {}
 
