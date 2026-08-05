@@ -1,31 +1,33 @@
-FROM python:3.10-slim
-WORKDIR /app
+# Use a lightweight Python base image
+FROM python:3.10-slim-bullseye
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    chromium \
-    chromium-driver \
-    fonts-liberation \
+# Install required OS libraries and Google Chrome
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    unzip \
+    gnupg \
     libnss3 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libatspi2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libgbm1 \
-    libgtk-3-0 \
+    libxss1 \
+    libappindicator3-1 \
     libasound2 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libxkbcommon0 \
+    fonts-liberation \
     libx11-xcb1 \
-    xdg-utils \
+    # Download and install Google Chrome
+    && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    && apt-get install -y ./google-chrome-stable_current_amd64.deb \
+    && rm ./google-chrome-stable_current_amd64.deb \
     && rm -rf /var/lib/apt/lists/*
 
-RUN chromium --version && chromedriver --version && ldd $(which chromedriver) | grep "not found" || true
+# Set the working directory
+WORKDIR /app
 
-COPY requirements.txt requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Copy your requirements file and install Python packages
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of your bot's code
 COPY . .
-CMD ["python3", "main.py"]
+
+# Run the bot (Replace 'bot.py' with your actual main file name)
+CMD ["python", "bot.py"]
