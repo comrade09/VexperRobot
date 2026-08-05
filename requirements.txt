@@ -9,6 +9,7 @@ dnspython
 aiohttp
 pytz
 humanize
+requests
 telethon
 pyrofork
 TgCrypto
