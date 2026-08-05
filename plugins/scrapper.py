@@ -9,12 +9,15 @@ from urllib.parse import unquote
 
 import requests
 
-from pyrogram import filters
-from pyrogram.types import Message
-from bot import Bot  # Matches your existing bot import
+# Engine 1 (best): curl_cffi impersonates a real Chrome TLS/HTTP2 fingerprint,
+# which defeats Cloudflare bot-fight 403s on datacenter IPs.
+try:
+    from curl_cffi import requests as cffi_requests
+    _cffi_session = cffi_requests.Session(impersonate="chrome")
+except Exception:
+    _cffi_session = None
 
-# Optional: solves Cloudflare JS challenges (pip install cloudscraper).
-# Falls back to plain requests if not installed.
+# Engine 2: cloudscraper solves Cloudflare JS challenges.
 try:
     import cloudscraper
     _cf_scraper = cloudscraper.create_scraper(
@@ -22,6 +25,13 @@ try:
     )
 except Exception:
     _cf_scraper = None
+
+# Optional proxy: set env var SCRAPE_PROXY, e.g. http://user:pass@host:port
+PROXY = os.environ.get("SCRAPE_PROXY") or None
+
+from pyrogram import filters
+from pyrogram.types import Message
+from bot import Bot  # Matches your existing bot import
 
 BASE = "https://studyuk.online/offline"
 
@@ -71,15 +81,30 @@ def _is_challenge(text):
             or "enable javascript and cookies" in head)
 
 
+def _http_get(url, timeout=30, referer=None):
+    """Try engines in order: curl_cffi -> cloudscraper -> requests."""
+    headers = _browser_headers(referer)
+
+    if _cffi_session is not None:
+        try:
+            return _cffi_session.get(url, headers=headers, timeout=timeout, proxies=PROXY)
+        except Exception:
+            pass
+
+    if _cf_scraper is not None:
+        try:
+            return _cf_scraper.get(url, headers=headers, timeout=timeout, proxies=PROXY)
+        except Exception:
+            pass
+
+    return requests.get(url, headers=headers, timeout=timeout, proxies=PROXY)
+
+
 def _fetch(url, timeout=30, referer=None, tries=4):
     last = None
     for attempt in range(tries):
-        headers = _browser_headers(referer)
         try:
-            if _cf_scraper is not None:
-                resp = _cf_scraper.get(url, headers=headers, timeout=timeout)
-            else:
-                resp = requests.get(url, headers=headers, timeout=timeout)
+            resp = _http_get(url, timeout=timeout, referer=referer)
 
             if resp.status_code in (403, 429, 503):
                 last = RuntimeError(f"HTTP {resp.status_code} for {url} (blocked/rate-limited)")
@@ -184,6 +209,13 @@ def scrape_single_batch(batch_url):
     batch_id_match = re.search(r"batch_id=([a-zA-Z0-9]+)", batch_url)
     batch_id = batch_id_match.group(1) if batch_id_match else "Unknown_Batch"
     clean_url = f"{BASE}/batch-details.php?batch_id={batch_id}"
+
+    # Warm up: visit the site root first so Cloudflare issues cookies
+    # before we hit the deep pages.
+    try:
+        _fetch("https://studyuk.online/", timeout=30)
+    except Exception:
+        pass
 
     titles = get_batch_titles()
     batch_title = titles.get(batch_id, f"Batch_{batch_id}")
