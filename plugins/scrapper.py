@@ -22,6 +22,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 # ==========================================
 def setup_driver():
     options = webdriver.ChromeOptions()
+    
+    # --- CRITICAL FOR KOYEB/DOCKER ---
+    # Explicitly tell Selenium where Chrome is installed
+    options.binary_location = "/usr/bin/google-chrome"
+    # ---------------------------------
+    
     options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
