@@ -226,7 +226,7 @@ async def handle_json_file(client: Bot, message: Message):
             os.remove(file_path)
 
 
-# --- 2. User Batches Menu ---
+# --- 2. User Batches Menu (Paginated & 8 Per Page) ---
 @Bot.on_message(filters.command("batches") & filters.private, group=3656)
 async def batches_command(client: Bot, message: Message):
     batches = await get_all_batches()
@@ -235,13 +235,60 @@ async def batches_command(client: Bot, message: Message):
         await message.reply_text("No batches are currently available.")
         return
 
+    limit = 8
+    page_batches = batches[0:limit]
+
     buttons = []
-    for b in batches:
+    for b in page_batches:
         b_id = b.get("batch_id")
         b_name = BATCH_MAP.get(b_id, b.get("batch_title", f"Batch {b_id}"))
         buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}_0")])
     
+    if len(batches) > limit:
+        buttons.append([InlineKeyboardButton("Next ➡️", callback_data="bat_page_1")])
+
     await message.reply_text(
+        "📚 <b>Select a Batch:</b>",
+        reply_markup=InlineKeyboardMarkup(buttons),
+        parse_mode=ParseMode.HTML
+    )
+
+# --- 2.5 Batch Pagination Handler ---
+@Bot.on_callback_query(filters.regex(r"^(bat_page_(\d+)|back_to_batches)$"), group=4763)
+async def batches_pagination(client: Bot, callback_query: CallbackQuery):
+    data = callback_query.data
+    
+    # Check if user pressed "Back to Batches" or navigated via Next/Prev
+    if data == "back_to_batches":
+        page = 0
+    else:
+        page = int(callback_query.matches[0].group(2))
+
+    batches = await get_all_batches()
+    if not batches:
+        return await callback_query.answer("No batches are currently available.", show_alert=True)
+
+    limit = 8
+    skip = page * limit
+    page_batches = batches[skip:skip+limit]
+
+    buttons = []
+    for b in page_batches:
+        b_id = b.get("batch_id")
+        b_name = BATCH_MAP.get(b_id, b.get("batch_title", f"Batch {b_id}"))
+        buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}_0")])
+        
+    # Navigation Buttons for Batches List
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Prev", callback_data=f"bat_page_{page-1}"))
+    if skip + limit < len(batches):
+        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"bat_page_{page+1}"))
+        
+    if nav_buttons:
+        buttons.append(nav_buttons)
+
+    await callback_query.message.edit_text(
         "📚 <b>Select a Batch:</b>",
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode=ParseMode.HTML
@@ -304,22 +351,6 @@ async def show_teachers(client: Bot, callback_query: CallbackQuery):
 
     await callback_query.message.edit_text(
         f"👨‍🏫 <b>Teachers for {batch_name}:</b>\nSelect a teacher to view their classes.",
-        reply_markup=InlineKeyboardMarkup(buttons),
-        parse_mode=ParseMode.HTML
-    )
-
-
-@Bot.on_callback_query(filters.regex(r"^back_to_batches$"), group=4763)
-async def back_to_batches_callback(client: Bot, callback_query: CallbackQuery):
-    batches = await get_all_batches()
-    buttons = []
-    for b in batches:
-        b_id = b.get("batch_id")
-        b_name = BATCH_MAP.get(b_id, b.get("batch_title", f"Batch {b_id}"))
-        buttons.append([InlineKeyboardButton(b_name, callback_data=f"bch_{b_id}_0")])
-        
-    await callback_query.message.edit_text(
-        "📚 <b>Select a Batch:</b>",
         reply_markup=InlineKeyboardMarkup(buttons),
         parse_mode=ParseMode.HTML
     )
