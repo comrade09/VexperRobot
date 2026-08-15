@@ -29,6 +29,30 @@ async def full_userbase():
 async def del_user(user_id: int):
     await user_data.delete_one({'_id': user_id})
 
+# --- TELETHON STRING SESSION FUNCTIONS ---
+
+async def save_session(user_id: int, session_string: str):
+    """Saves the Telethon string session to MongoDB for a specific user."""
+    await user_data.update_one(
+        {'_id': user_id},
+        {'$set': {'session_string': session_string}},
+        upsert=True
+    )
+
+async def get_session(user_id: int):
+    """Retrieves the Telethon string session from MongoDB."""
+    user = await user_data.find_one({'_id': user_id})
+    if user:
+        return user.get('session_string')
+    return None
+
+async def delete_session(user_id: int):
+    """Deletes the saved string session."""
+    await user_data.update_one(
+        {'_id': user_id},
+        {'$unset': {'session_string': ""}}
+    )
+
 
 # --- ACCOUNTS LOGIC ---
 
