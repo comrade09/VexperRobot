@@ -4,18 +4,17 @@ Parses a coaching-style MCQ test PDF (question section + a subject-wise
 answer-key section) into a structured dict, preserving figures/diagrams/
 chemical-structures/formula-images exactly as they appear.
 
-Two content sources, selected per page automatically:
-  - NATIVE pages (PDF has a real text layer): walked block-by-block in
-    reading order. Text blocks matching the profile's question/option
-    regex start a new question/option; anything else (text or embedded
-    raster image) between two such markers is attached to whichever
-    question/option is currently "open".
-  - SCANNED pages (no usable text layer): OCR is used only to *locate*
-    where each question/option starts; the actual page raster between
-    two consecutive marker positions is cropped and embedded as a
-    picture, so diagrams/structures/formulas on scanned pages still
-    come through correctly even though OCR text itself is unreliable
-    for equation-heavy content.
+Pages are walked block-by-block in reading order using the PDF's native
+text layer. Text blocks matching the profile's question/option regex
+start a new question/option; anything else (text or embedded raster
+image) between two such markers is attached to whichever question/option
+is currently "open".
+
+Pages with no usable text layer (scanned/image-only pages) are not OCR'd
+-- OCR was removed because running it synchronously blocked the bot's
+event loop and froze it on any test with scanned pages. Such pages
+simply yield no questions/options; parse_pdf() reports how many pages
+looked scanned so the caller can warn the user.
 
 A "coaching profile" (see coaching_profiles.py) supplies the regexes,
 subject-header set, and answer-key heading/parsing mode, so the same
@@ -45,7 +44,11 @@ import pymupdf as fitz
 from PIL import Image
 
 from plugins.coaching_profiles import get_profile
-import plugins.ocr as ocrmod
+
+# A page below this many extractable characters is treated as scanned/
+# image-only (no OCR fallback -- see module docstring) and simply
+# produces no questions/options; it's only used to report a count.
+MIN_TEXT_CHARS = 25
 
 
 def _esc(text):
@@ -93,11 +96,11 @@ def _render_bbox(page, bbox, zoom=2.0, pad=2):
 
 
 def _normalize_image(ext, raw):
-    """Fallback normalizer for image bytes that didn't come from a live
-    page render (e.g. OCR-path crops that already went through
-    ocrmod.crop_region, or any other raw bytes handed in directly).
+    """Normalizer for image bytes that didn't come from a live page
+    render (e.g. any raw bytes handed in directly from elsewhere).
     Forces CMYK/odd color spaces to RGB and composites any transparency
-    onto white instead of letting it collapse to black."""
+    onto white instead of letting it collapse to black. (Currently
+    unused internally -- kept as a utility.)"""
     try:
         pix = fitz.Pixmap(raw)
         if pix.colorspace is None or pix.colorspace.n not in (1, 3):
@@ -194,14 +197,14 @@ def parse_pdf(pdf_path, profile_id="generic", second_pdf_path=None):
         if ak_page_idx is None:
             ak_page_idx = len(doc)
 
-    # ---------- figure out which question-section pages are scanned ----------
-    scanned = {p: not ocrmod.page_has_text_layer(doc[p]) for p in range(ak_page_idx)}
-    ocr_markers = {
-        p: ocrmod.ocr_page_markers(doc[p], question_re, option_re, subject_names)
-        for p in range(ak_page_idx) if scanned[p]
-    }
+    # ---------- pages with no usable text layer (scanned/image-only) are
+    # counted for reporting, but NOT OCR'd -- see module docstring. ----------
+    scanned_pages = sum(
+        1 for p in range(ak_page_idx)
+        if len(doc[p].get_text("text").strip()) < MIN_TEXT_CHARS
+    )
 
-    # ---------- shared state machine (used by both native & OCR walks) ----------
+    # ---------- shared state machine ----------
     subjects = []
     cur_subject = None
     cur_question = None
@@ -234,112 +237,73 @@ def parse_pdf(pdf_path, profile_id="generic", second_pdf_path=None):
         existing = cur_question["options"]
         return 1 if not existing else max(existing) + 1
 
-    # ---------- walk pages in order ----------
+    # ---------- walk pages in order (native text layer only) ----------
     for pno in range(ak_page_idx):
         page = doc[pno]
 
-        if not scanned[pno]:
-            d = page.get_text("dict")
-            for b in d["blocks"]:
-                if b["type"] == 0:
-                    txt = "\n".join(
-                        "".join(s["text"] for s in line["spans"])
-                        for line in b["lines"]
-                    ).strip()
-                    if not txt:
-                        continue
-                    oneline = " ".join(txt.split())
+        d = page.get_text("dict")
+        for b in d["blocks"]:
+            if b["type"] == 0:
+                txt = "\n".join(
+                    "".join(s["text"] for s in line["spans"])
+                    for line in b["lines"]
+                ).strip()
+                if not txt:
+                    continue
+                oneline = " ".join(txt.split())
 
-                    if oneline.upper() in subject_names:
-                        new_subject(oneline.upper())
-                        continue
-                    if cur_subject is None:
-                        continue  # header/junk before the first subject
-
-                    # Formula rendered with a math font whose glyphs don't
-                    # decode to real text -> screenshot this block instead
-                    # of emitting garbled characters.
-                    if _looks_garbled(txt):
-                        if cur_slot is not None:
-                            ext, raw = _render_bbox(page, b["bbox"])
-                            cur_slot.append(("image", (ext, raw)))
-                        continue
-
-                    m = question_re.match(txt)
-                    if m and m.group(1).isdigit() and int(m.group(1)) == expected_next_q():
-                        new_question(int(m.group(1)))
-                        rest = m.group(2).strip() if m.lastindex and m.lastindex >= 2 else ""
-                        if rest:
-                            if _looks_garbled(rest):
-                                ext, raw = _render_bbox(page, b["bbox"])
-                                cur_slot.append(("image", (ext, raw)))
-                            else:
-                                cur_slot.append(("text", rest))
-                        continue
-
-                    if cur_question is not None:
-                        mo = option_re.match(txt)
-                        if mo and mo.group(1).isdigit():
-                            n = int(mo.group(1))
-                            if 1 <= n <= 4 and n == expected_next_o():
-                                new_option(n)
-                                rest = mo.group(2).strip() if mo.lastindex and mo.lastindex >= 2 else ""
-                                if rest:
-                                    if _looks_garbled(rest):
-                                        ext, raw = _render_bbox(page, b["bbox"])
-                                        cur_slot.append(("image", (ext, raw)))
-                                    else:
-                                        cur_slot.append(("text", rest))
-                                continue
-
-                    if cur_slot is not None:
-                        cur_slot.append(("text", txt))
-
-                else:  # image block -> screenshot its bbox from the live
-                    # page instead of trusting the raw embedded stream
-                    # (avoids CMYK/alpha color issues entirely).
-                    if cur_slot is None:
-                        continue
-                    ext, raw = _render_bbox(page, b["bbox"])
-                    cur_slot.append(("image", (ext, raw)))
-
-        else:
-            markers = ocr_markers.get(pno, [])
-            for idx, mk in enumerate(markers):
-                if idx + 1 < len(markers):
-                    end_page, end_y = pno, markers[idx + 1]["y"]
-                else:
-                    nxt = pno + 1
-                    if nxt < ak_page_idx and scanned.get(nxt) and ocr_markers.get(nxt):
-                        end_page, end_y = nxt, ocr_markers[nxt][0]["y"]
-                    elif nxt < ak_page_idx and scanned.get(nxt):
-                        end_page, end_y = nxt, doc[nxt].rect.height
-                    else:
-                        end_page, end_y = pno, doc[pno].rect.height
-
-                if mk["kind"] == "subject":
-                    new_subject(mk["value"])
+                if oneline.upper() in subject_names:
+                    new_subject(oneline.upper())
                     continue
                 if cur_subject is None:
+                    continue  # header/junk before the first subject
+
+                # Formula rendered with a math font whose glyphs don't
+                # decode to real text -> screenshot this block instead
+                # of emitting garbled characters.
+                if _looks_garbled(txt):
+                    if cur_slot is not None:
+                        ext, raw = _render_bbox(page, b["bbox"])
+                        cur_slot.append(("image", (ext, raw)))
                     continue
 
-                if mk["kind"] == "question" and mk["value"] == expected_next_q():
-                    ext, raw = ocrmod.crop_region(doc, pno, mk["y"], end_page, end_y)
-                    new_question(mk["value"])
-                    cur_slot.append(("image", (ext, raw)))
+                m = question_re.match(txt)
+                if m and m.group(1).isdigit() and int(m.group(1)) == expected_next_q():
+                    new_question(int(m.group(1)))
+                    rest = m.group(2).strip() if m.lastindex and m.lastindex >= 2 else ""
+                    if rest:
+                        if _looks_garbled(rest):
+                            ext, raw = _render_bbox(page, b["bbox"])
+                            cur_slot.append(("image", (ext, raw)))
+                        else:
+                            cur_slot.append(("text", rest))
                     continue
 
-                if mk["kind"] == "option" and cur_question is not None and mk["value"] == expected_next_o():
-                    ext, raw = ocrmod.crop_region(doc, pno, mk["y"], end_page, end_y)
-                    new_option(mk["value"])
-                    cur_slot.append(("image", (ext, raw)))
-                    continue
+                if cur_question is not None:
+                    mo = option_re.match(txt)
+                    if mo and mo.group(1).isdigit():
+                        n = int(mo.group(1))
+                        if 1 <= n <= 4 and n == expected_next_o():
+                            new_option(n)
+                            rest = mo.group(2).strip() if mo.lastindex and mo.lastindex >= 2 else ""
+                            if rest:
+                                if _looks_garbled(rest):
+                                    ext, raw = _render_bbox(page, b["bbox"])
+                                    cur_slot.append(("image", (ext, raw)))
+                                else:
+                                    cur_slot.append(("text", rest))
+                            continue
 
-                # sequence mismatch (OCR noise) -> treat as extra content
-                # for whichever slot is currently open, if any
                 if cur_slot is not None:
-                    ext, raw = ocrmod.crop_region(doc, pno, mk["y"], end_page, end_y)
-                    cur_slot.append(("image", (ext, raw)))
+                    cur_slot.append(("text", txt))
+
+            else:  # image block -> screenshot its bbox from the live
+                # page instead of trusting the raw embedded stream
+                # (avoids CMYK/alpha color issues entirely).
+                if cur_slot is None:
+                    continue
+                ext, raw = _render_bbox(page, b["bbox"])
+                cur_slot.append(("image", (ext, raw)))
 
     # ---------- render each question's stem/options to HTML ----------
     global_no = 0
@@ -384,7 +348,7 @@ def parse_pdf(pdf_path, profile_id="generic", second_pdf_path=None):
         q["answer"] = best_map.get(q["global_no"])
 
     doc.close()
-    return {"subjects": subjects, "total": global_no}
+    return {"subjects": subjects, "total": global_no, "scanned_pages": scanned_pages}
 
 
 def _parse_qa_table(ak_text):
