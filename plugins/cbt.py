@@ -9,9 +9,9 @@ from pyrogram.enums import ParseMode
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 
 from bot import Bot
-from coaching_profiles import list_profiles, get_profile
-from parser import parse_pdf
-from html_gen import render_cbt_html
+from plugins.coaching_profiles import list_profiles, get_profile
+from plugins.parser import parse_pdf
+from plugins.html_gen import render_cbt_html
 
 # ---------------------------------------------------------------------------
 # PDF -> CBT plugin
