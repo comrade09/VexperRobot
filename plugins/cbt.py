@@ -36,6 +36,13 @@ MARK_WRONG = -1
 # chat_id -> selected coaching profile id, until changed or a PDF is processed
 pending_profile = {}
 
+# chat_id -> {"path": <local qp pdf path>, "file_name": <original name>}
+# Only used for two_pdf profiles (see coaching_profiles.py), e.g. AAKASH,
+# where the question paper and the answer-key/solutions booklet come in
+# as two separate PDF uploads. Single-PDF profiles (Allen, generic, ...)
+# never touch this dict.
+pending_qp = {}
+
 
 def cbt_coaching_markup():
     rows = [
@@ -52,9 +59,19 @@ def safe_stem(name):
     return stem or "test"
 
 
+def _clear_pending(chat_id):
+    pending_profile.pop(chat_id, None)
+    qp = pending_qp.pop(chat_id, None)
+    if qp:
+        try:
+            os.remove(qp["path"])
+        except OSError:
+            pass
+
+
 @Bot.on_message(filters.command("cbt"), group=2630)
 async def cbt_cmd(client: Bot, message: Message):
-    pending_profile.pop(message.chat.id, None)
+    _clear_pending(message.chat.id)
     await message.reply_text(
         text=''' Select your coaching ''',
         reply_markup=cbt_coaching_markup(),
@@ -66,7 +83,7 @@ async def cbt_callbacks(client: Bot, query: CallbackQuery):
     data = query.data
 
     if data == "cbt_menu":
-        pending_profile.pop(query.message.chat.id, None)
+        _clear_pending(query.message.chat.id)
         await query.message.edit_text(
             text=''' Select your coaching ''',
             reply_markup=cbt_coaching_markup(),
@@ -74,13 +91,23 @@ async def cbt_callbacks(client: Bot, query: CallbackQuery):
 
     elif data.startswith("cbtcoach_"):
         pid = data.split("cbtcoach_", 1)[1]
+        pending_qp.pop(query.message.chat.id, None)  # start any new coaching fresh
         pending_profile[query.message.chat.id] = pid
-        label = get_profile(pid)["label"]
+        profile = get_profile(pid)
+        label = profile["label"]
         await query.answer(f"Selected: {label}")
+        if profile.get("two_pdf"):
+            prompt = (
+                f"Now send me the <b>question paper</b> PDF, then the "
+                f"<b>answer-key / solutions</b> PDF for the same test as a "
+                f"second file (in that order)."
+            )
+        else:
+            prompt = "Now send me the PDF as a document."
         await query.message.edit_text(
             text=f''' ✅ Coaching set to <b>{label}</b>.
 
-Now send me the PDF as a document. Use /cbt any time to change this. ''',
+{prompt} Use /cbt any time to change this. ''',
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("Change coaching", callback_data="cbt_menu")]]
@@ -108,7 +135,58 @@ async def cbt_handle_pdf(client: Bot, message: Message):
         )
         return
 
-    profile_label = get_profile(profile_id)["label"]
+    profile = get_profile(profile_id)
+    profile_label = profile["label"]
+
+    # ---------- two_pdf profiles (e.g. AAKASH): collect QP, then the
+    # answer-key/solutions PDF, before doing any parsing ----------
+    if profile.get("two_pdf"):
+        if chat_id not in pending_qp:
+            status = await message.reply_text(
+                f"📥 Downloading question paper… (profile: {profile_label})", quote=True
+            )
+            try:
+                qp_path = await message.download(file_name=str(WORKDIR / doc.file_name))
+            except Exception as e:
+                await status.edit_text(f"Couldn't download that file: {e}")
+                return
+            pending_qp[chat_id] = {"path": qp_path, "file_name": doc.file_name}
+            await status.edit_text(
+                "✅ Got the question paper.\n\n"
+                "Now send me the <b>answer-key / solutions</b> PDF for this same test."
+            )
+            return
+
+        # second file for this chat -> the answer-key/solutions PDF
+        qp_info = pending_qp[chat_id]
+        status = await message.reply_text(
+            f"📥 Downloading answer key / solutions… (profile: {profile_label})", quote=True
+        )
+        t0 = time.time()
+        try:
+            sol_path = await message.download(file_name=str(WORKDIR / doc.file_name))
+        except Exception as e:
+            await status.edit_text(f"Couldn't download that file: {e}")
+            return
+
+        try:
+            await _process_and_send(
+                message, status, profile_id, profile_label,
+                qp_info["path"], qp_info["file_name"],
+                second_pdf_path=sol_path,
+            )
+        finally:
+            print(f"[pdf2cbt] {qp_info['file_name']} + {doc.file_name} "
+                  f"({profile_id}): {time.time()-t0:.1f}s")
+            pending_qp.pop(chat_id, None)
+            for p in (qp_info["path"], sol_path):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+        return
+
+    # ---------- single-PDF profiles (Allen, generic, ...): unchanged flow ----------
     status = await message.reply_text(
         f"📥 Downloading PDF… (profile: {profile_label})", quote=True
     )
@@ -120,11 +198,27 @@ async def cbt_handle_pdf(client: Bot, message: Message):
         return
 
     try:
+        await _process_and_send(
+            message, status, profile_id, profile_label, pdf_path, doc.file_name
+        )
+    finally:
+        print(f"[pdf2cbt] {doc.file_name} ({profile_id}): {time.time()-t0:.1f}s")
+        try:
+            os.remove(pdf_path)
+        except OSError:
+            pass
+
+
+async def _process_and_send(message, status, profile_id, profile_label,
+                             pdf_path, file_name, second_pdf_path=None):
+    """Shared parse -> render -> send logic for both the single-PDF and
+    two_pdf flows. Any exception is caught and reported on `status`."""
+    try:
         await status.edit_text(
             "🔎 Reading questions, options, figures and the answer key…\n"
             "(scanned pages, if any, are OCR'd automatically — this can take a bit longer)"
         )
-        data = parse_pdf(pdf_path, profile_id)
+        data = parse_pdf(pdf_path, profile_id, second_pdf_path=second_pdf_path)
 
         if data["total"] == 0:
             await status.edit_text(
@@ -144,13 +238,13 @@ async def cbt_handle_pdf(client: Bot, message: Message):
         )
         html_out = render_cbt_html(
             data,
-            title=safe_stem(doc.file_name).replace("_", " "),
+            title=safe_stem(file_name).replace("_", " "),
             default_minutes=DEFAULT_MINUTES,
             mark_correct=MARK_CORRECT,
             mark_wrong=MARK_WRONG,
         )
 
-        out_path = WORKDIR / f"{safe_stem(doc.file_name)}_CBT.html"
+        out_path = WORKDIR / f"{safe_stem(file_name)}_CBT.html"
         out_path.write_text(html_out, encoding="utf-8")
 
         subj_line = ", ".join(
@@ -177,9 +271,4 @@ async def cbt_handle_pdf(client: Bot, message: Message):
         await status.edit_text(
             f"Something went wrong while processing this PDF:\n<code>{err}</code>"
         )
-    finally:
-        print(f"[pdf2cbt] {doc.file_name} ({profile_id}): {time.time()-t0:.1f}s")
-        try:
-            os.remove(pdf_path)
-        except OSError:
-            pass
+                                   
