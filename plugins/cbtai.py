@@ -18,8 +18,6 @@ from google import genai
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_API_KEY_HERE")
 client_ai = genai.Client(api_key=GEMINI_API_KEY)
 
-# In-memory dictionary for user state management
-# Format: { user_id: {"state": str, "q_pdf": str, "a_pdf": str} }
 USER_STATES = {}
 
 OUT_DIR = Path("cbt_output")
@@ -90,21 +88,39 @@ def extract_answer_key_sync(key_path):
     if not key_path:
         return {}
     uploaded_key = client_ai.files.upload(file=key_path)
-    prompt = r"""Read this answer key carefully. Return ONLY valid JSON:
-{"answers": {"1": 2, "2": 4, "3": 1}}
-Rules: Question number is key. Value is 1 for A, 2 for B, 3 for C, 4 for D. Extract ALL available answers. Do not solve."""
+    prompt = r"""Read this answer key / solutions document carefully.
+Return ONLY valid JSON in this format:
+{
+  "answers": {
+    "1": {"option": 2, "page": 45},
+    "2": {"option": 4, "page": 46}
+  }
+}
+Rules:
+- Question number is the key.
+- "option" value must be: 1 for A, 2 for B, 3 for C, 4 for D.
+- "page" is the page number in THIS uploaded document where the detailed solution/explanation is found (integer). If there is no explanation page, return null.
+- Extract ALL available answers. Do not solve or guess.
+"""
     response = client_ai.models.generate_content(model="gemini-3.6-flash", contents=[uploaded_key, prompt])
     raw = clean_json_response(response.text)
     try:
         data = json.loads(raw)
     except Exception:
-        repair_prompt = f"Convert this into valid JSON. Return only: {{\"answers\": {{\"question_number\": option_number}}}}\n\n{raw}"
+        repair_prompt = f"Convert this into valid JSON. Return only: {{\"answers\": {{\"question_number\": {{\"option\": int, \"page\": int}}}}}}\n\n{raw}"
         response2 = client_ai.models.generate_content(model="gemini-3.6-flash", contents=repair_prompt)
         data = json.loads(clean_json_response(response2.text))
     
     answers = {}
-    for number, answer in data.get("answers", {}).items():
-        try: answers[int(number)] = int(answer)
+    for number, details in data.get("answers", {}).items():
+        try: 
+            if isinstance(details, dict):
+                answers[int(number)] = {
+                    "option": int(details.get("option", 0)),
+                    "page": int(details.get("page")) if details.get("page") else None
+                }
+            else:
+                answers[int(number)] = {"option": int(details), "page": None}
         except: pass
     return answers
 
@@ -130,10 +146,11 @@ def validate_questions(data):
 # ============================================================
 # HTML GENERATOR
 # ============================================================
-def generate_cbt_html(title, questions, answer_key, pdf_path):
+def generate_cbt_html(title, questions, answer_key, q_pdf, a_pdf):
+    # 1. Extract Question Images
     page_b64_map = {}
     try:
-        doc = fitz.open(pdf_path)
+        doc = fitz.open(q_pdf)
         for q in questions:
             text_to_check = str(q.get('question', '')).upper() + " " + str(q.get('options', [])).upper()
             if "[FIGURE" in text_to_check or "[IMAGE" in text_to_check:
@@ -151,9 +168,30 @@ def generate_cbt_html(title, questions, answer_key, pdf_path):
         doc.close()
     except: pass
 
+    # 2. Extract Solution Images
+    solution_b64_map = {}
+    if a_pdf and os.path.exists(a_pdf):
+        try:
+            doc_a = fitz.open(a_pdf)
+            for ans_data in answer_key.values():
+                sol_page = ans_data.get('page')
+                if sol_page:
+                    try:
+                        page_index = int(sol_page) - 1
+                        page_key = str(sol_page)
+                        if page_key not in solution_b64_map and 0 <= page_index < len(doc_a):
+                            page = doc_a[page_index]
+                            pix = page.get_pixmap(dpi=150)
+                            b64 = base64.b64encode(pix.tobytes("png")).decode("utf-8")
+                            solution_b64_map[page_key] = f"data:image/png;base64,{b64}"
+                    except: continue
+            doc_a.close()
+        except: pass
+
     questions_json = json.dumps(questions, ensure_ascii=False)
     answer_json = json.dumps(answer_key, ensure_ascii=False)
     page_images_json = json.dumps(page_b64_map, ensure_ascii=False)
+    solution_images_json = json.dumps(solution_b64_map, ensure_ascii=False)
     title_safe = html.escape(title)
 
     return f"""<!DOCTYPE html>
@@ -229,7 +267,7 @@ button.act:hover {{ opacity: 0.9; transform: translateY(-1px); }}
 .current {{ outline:3px solid #f59e0b; outline-offset: 2px; }}
 
 /* SCREENS */
-#startScreen, #resultScreen {{ max-width:600px; margin:60px auto; background:white; border-radius:16px; padding:40px 32px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); text-align: center; border: 1px solid #f1f5f9; }}
+#startScreen, #resultScreen {{ max-width:800px; margin:60px auto; background:white; border-radius:16px; padding:40px 32px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); text-align: center; border: 1px solid #f1f5f9; }}
 #startScreen h2, #resultScreen h2 {{ color:var(--nav); margin: 0 0 8px 0; font-size: 24px; }}
 #startScreen button, #resultScreen button {{ margin-top:30px; background:var(--nav); color:white; border:none; padding:14px 32px; border-radius:8px; font-size:16px; cursor:pointer; font-weight:700; width: 100%; transition: all 0.2s; }}
 #startScreen button:hover, #resultScreen button:hover {{ background: #334155; transform: translateY(-2px); }}
@@ -237,6 +275,13 @@ button.act:hover {{ opacity: 0.9; transform: translateY(-1px); }}
 .score-box {{ background:#f8fafc; border: 1px solid #e2e8f0; border-radius:12px; padding:20px; text-align:center; }}
 .score-box b {{ display:block; font-size:28px; color:var(--nav); margin-bottom: 4px; }}
 .score-box span {{ font-size:13px; color:#64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }}
+
+/* REVIEW SECTION */
+.review-section {{ margin-top: 40px; text-align: left; }}
+.review-item {{ border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 16px; background: #fff; }}
+.review-correct {{ border-left: 5px solid var(--green); }}
+.review-wrong {{ border-left: 5px solid var(--red); }}
+.review-skipped {{ border-left: 5px solid var(--grey); }}
 .hide {{ display:none !important; }}
 
 /* TELEGRAM POPUP */
@@ -334,6 +379,7 @@ button.act:hover {{ opacity: 0.9; transform: translateY(-1px); }}
 const questions = {questions_json};
 const answerKey = {answer_json};
 const pageImages = {page_images_json};
+const solutionImages = {solution_images_json};
 
 let current = 0; let started = false; let remaining = 180 * 60;
 let timerInterval = null; let popupInterval = null;
@@ -485,12 +531,60 @@ function confirmSubmit() {{
 function submitTest() {{
     if(timerInterval) clearInterval(timerInterval);
     let correct = 0, wrong = 0, skipped = 0;
+    
+    let reviewHTML = '<div class="review-section"><h3>Detailed Review</h3>';
+
     questions.forEach((q,i) => {{
-        if(answers[i] === null) {{ skipped++; return; }}
-        const actual = answerKey[q.global_no];
-        if(actual === undefined) return;
-        if(answers[i] + 1 === actual) correct++; else wrong++;
+        const userAns = answers[i];
+        const actualData = answerKey[q.global_no];
+        const actualOpt = actualData ? actualData.option - 1 : null;
+        const solPageStr = actualData && actualData.page ? String(actualData.page) : null;
+
+        if(userAns === null) {{ skipped++; }}
+        else if(userAns === actualOpt) {{ correct++; }} 
+        else {{ wrong++; }}
+
+        let statusClass = "review-skipped";
+        let statusText = "Skipped";
+        if (userAns !== null && actualOpt !== null) {{
+            if (userAns === actualOpt) {{ statusClass = "review-correct"; statusText = "Correct"; }} 
+            else {{ statusClass = "review-wrong"; statusText = "Incorrect"; }}
+        }}
+
+        reviewHTML += `<div class="review-item ${{statusClass}}">`;
+        reviewHTML += `<h4 style="margin-top:0; color:#1e293b;">Question ${{q.global_no}} <span style="font-size:12px; float:right; padding:4px 8px; border-radius:4px; background:#f1f5f9; color:#475569;">${{statusText}}</span></h4>`;
+        
+        let stem = q.question.replace(/\[FIGURE\]/gi, '[Diagram in Question]').replace(/\\n/g, "<br>");
+        reviewHTML += `<p style="color:#334155;">${{stem}}</p><div style="margin-top: 10px;">`;
+        
+        q.options.forEach((opt, optIdx) => {{
+            let optStyle = "color: #64748b;";
+            let icon = "⚪ ";
+            if (optIdx === actualOpt) {{
+                optStyle = "color: #10b981; font-weight: bold;";
+                icon = "✅ ";
+            }} else if (optIdx === userAns && userAns !== actualOpt) {{
+                optStyle = "color: #ef4444; text-decoration: line-through;";
+                icon = "❌ ";
+            }} else if (optIdx === userAns && actualOpt === null) {{
+                optStyle = "color: #3b82f6;"; 
+                icon = "🔵 ";
+            }}
+            reviewHTML += `<div style="${{optStyle}} margin-bottom: 6px;">${{icon}}${{String.fromCharCode(65+optIdx)}}) ${{opt.replace(/\[FIGURE\]/gi, '[Diagram]')}}</div>`;
+        }});
+        reviewHTML += `</div>`;
+
+        if (solPageStr && solutionImages[solPageStr]) {{
+            reviewHTML += `
+            <details class="figure-details" style="border-left-color: #10b981; margin-top: 16px;">
+                <summary>📄 View Solution / Explanation (Source Page ${{solPageStr}})</summary>
+                <img src="${{solutionImages[solPageStr]}}" alt="Solution Page" style="max-width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 10px;">
+            </details>`;
+        }}
+        reviewHTML += `</div>`;
     }});
+    reviewHTML += '</div>';
+
     const hasKey = Object.keys(answerKey).length > 0;
     const attempted = questions.length - skipped;
     const score = hasKey ? (correct * 4 - wrong) : null;
@@ -520,7 +614,8 @@ function submitTest() {{
         <div style="font-size: 48px; margin-bottom: 16px;">🏆</div>
         <h2>Test Submitted</h2>
         ${{scoreHTML}}
-        <button onclick="location.reload()">Re-attempt Test</button>
+        ${{reviewHTML}}
+        <button onclick="location.reload()" style="margin-top: 30px;">Re-attempt Test</button>
     `;
 }}
 </script>
@@ -531,12 +626,12 @@ function submitTest() {{
 # ============================================================
 # BOT HANDLERS & PROGRESS
 # ============================================================
-@Client.on_message(filters.command("cbtai") & filters.private,group=66446)
+@Client.on_message(filters.command("cbtai") & filters.private,group=4563)
 async def start_cbt_process(client, message):
     USER_STATES[message.from_user.id] = {"state": "WAITING_FOR_Q_PDF"}
     await message.reply_text("📚 **CBT AI Converter**\n\nPlease upload the **Question PDF** (any coaching material).")
 
-@Client.on_message(filters.document & filters.private,group=64532)
+@Client.on_message(filters.document & filters.private,group=8667)
 async def handle_document(client, message):
     user_id = message.from_user.id
     state_info = USER_STATES.get(user_id)
@@ -564,13 +659,13 @@ async def handle_document(client, message):
         await msg.edit_text("PDF Saved! Does this PDF also contain the **Solutions / Answer Key**?", reply_markup=keyboard)
 
     elif current_state == "WAITING_FOR_A_PDF":
-        msg = await message.reply_text("📥 Downloading Answer Key PDF...")
+        msg = await message.reply_text("📥 Downloading Answer Key / Solutions PDF...")
         file_path = await message.download()
         USER_STATES[user_id]["a_pdf"] = file_path
         await msg.edit_text("✅ Answer Key saved.")
         await start_conversion(client, message.chat.id, user_id)
 
-@Client.on_callback_query(filters.regex(r"^cbt_"),group=4223)
+@Client.on_callback_query(filters.regex(r"^cbt_").group=6446)
 async def handle_callback(client, callback_query):
     user_id = callback_query.from_user.id
     data = callback_query.data
@@ -581,12 +676,12 @@ async def handle_callback(client, callback_query):
 
     if data == "cbt_combined":
         USER_STATES[user_id]["a_pdf"] = USER_STATES[user_id]["q_pdf"]
-        await callback_query.message.edit_text("✅ Will extract answers from the same PDF.")
+        await callback_query.message.edit_text("✅ Will extract answers and solutions from the same PDF.")
         await start_conversion(client, callback_query.message.chat.id, user_id)
         
     elif data == "cbt_separate":
         USER_STATES[user_id]["state"] = "WAITING_FOR_A_PDF"
-        await callback_query.message.edit_text("Please upload the **Answer Key PDF** now.")
+        await callback_query.message.edit_text("Please upload the **Answer Key / Solutions PDF** now.")
         
     elif data == "cbt_skip":
         USER_STATES[user_id]["a_pdf"] = None
@@ -610,7 +705,7 @@ async def progress_updater(client, chat_id, msg_id, status_tracker):
         try:
             await client.edit_message_text(chat_id, msg_id, text)
         except Exception:
-            pass # Ignore telegram flood waits or message not modified errors
+            pass 
 
 
 async def start_conversion(client, chat_id, user_id):
@@ -636,16 +731,16 @@ async def start_conversion(client, chat_id, user_id):
         if not questions:
             raise ValueError("No valid questions found.")
 
-        # 2. Extract Answers
+        # 2. Extract Answers and solution pages
         answer_key = {}
         if a_pdf:
-            status_tracker["status"] = "Extracting Answer Key..."
+            status_tracker["status"] = "Extracting Answer Key and mapping solutions..."
             answer_key = await loop.run_in_executor(None, extract_answer_key_sync, a_pdf)
 
         # 3. Build HTML
-        status_tracker["status"] = "Rendering diagrams and generating final HTML..."
+        status_tracker["status"] = "Rendering diagrams, solutions and generating final HTML..."
         title = data.get("test_title", "Custom_NEET_Test")
-        html_content = await loop.run_in_executor(None, generate_cbt_html, title, questions, answer_key, q_pdf)
+        html_content = await loop.run_in_executor(None, generate_cbt_html, title, questions, answer_key, q_pdf, a_pdf)
 
         output_file = OUT_DIR / f"{title.replace(' ', '_')}_CBT.html"
         output_file.write_text(html_content, encoding="utf-8")
@@ -660,7 +755,8 @@ async def start_conversion(client, chat_id, user_id):
             f"📄 **Test:** {title}\n"
             f"✨ **Extracted by:** @a3xarva\n"
             f"📢 **Channel:** [Voltaic Network](https://t.me/voltaic_network)\n\n"
-            f"🌐 Open this HTML file in any browser (Chrome/Safari) to attempt the test."
+            f"🌐 Open this HTML file in any browser (Chrome/Safari) to attempt the test.\n"
+            f"💡 *Detailed solutions and answers will be available upon submission.*"
         )
 
         await client.edit_message_text(chat_id, msg.id, "✅ **CBT Created Successfully!** Uploading file...")
@@ -672,6 +768,5 @@ async def start_conversion(client, chat_id, user_id):
         await client.edit_message_text(chat_id, msg.id, f"❌ **Error during conversion:**\n`{str(e)}`")
     
     finally:
-        # Cleanup downloaded files to save server space
         if q_pdf and os.path.exists(q_pdf): os.remove(q_pdf)
         if a_pdf and a_pdf != q_pdf and os.path.exists(a_pdf): os.remove(a_pdf)
