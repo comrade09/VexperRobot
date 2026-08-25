@@ -164,7 +164,14 @@ def _find_section_page(doc, heading, start=0):
     return None
 
 
-def parse_pdf(pdf_path, profile_id="generic"):
+def parse_pdf(pdf_path, profile_id="generic", second_pdf_path=None):
+    """second_pdf_path: only used by two_pdf profiles (see
+    coaching_profiles.py) -- e.g. AAKASH, where the question paper and
+    the answer-key/solutions booklet are separate files. When given, its
+    pages are appended to pdf_path's document and the answer-key section
+    is taken to start exactly where pdf_path's pages end, instead of
+    being located via profile["answer_key_heading"]. Single-PDF profiles
+    (Allen, generic, ...) never pass this and are completely unaffected."""
     profile = get_profile(profile_id)
     subject_names = profile["subject_names"]
     question_re = profile["question_re"]
@@ -172,9 +179,20 @@ def parse_pdf(pdf_path, profile_id="generic"):
 
     doc = fitz.open(pdf_path)
 
-    ak_page_idx = _find_section_page(doc, profile["answer_key_heading"])
-    if ak_page_idx is None:
-        ak_page_idx = len(doc)
+    qp_page_count = None
+    if second_pdf_path:
+        qp_page_count = len(doc)
+        doc2 = fitz.open(second_pdf_path)
+        doc.insert_pdf(doc2)
+        doc2.close()
+
+    if qp_page_count is not None:
+        # two_pdf profile: boundary is known exactly, no heading to search for.
+        ak_page_idx = qp_page_count
+    else:
+        ak_page_idx = _find_section_page(doc, profile["answer_key_heading"])
+        if ak_page_idx is None:
+            ak_page_idx = len(doc)
 
     # ---------- figure out which question-section pages are scanned ----------
     scanned = {p: not ocrmod.page_has_text_layer(doc[p]) for p in range(ak_page_idx)}
@@ -351,8 +369,13 @@ def parse_pdf(pdf_path, profile_id="generic"):
 
     all_questions = [q for s in subjects for q in s["questions"]]
     best_map, best_coverage = {}, -1
+    _AK_PARSERS = {
+        "qa_table": _parse_qa_table,
+        "inline_list": _parse_inline_list,
+        "grid_list": _parse_grid_list,
+    }
     for mode in profile.get("answer_key_modes", ["qa_table"]):
-        m = (_parse_qa_table(ak_text) if mode == "qa_table" else _parse_inline_list(ak_text))
+        m = _AK_PARSERS.get(mode, _parse_qa_table)(ak_text)
         cov = sum(1 for q in all_questions if q["global_no"] in m)
         if cov > best_coverage:
             best_map, best_coverage = m, cov
@@ -410,6 +433,23 @@ def _parse_inline_list(ak_text):
         if n == last_n + 1:
             answer_map[n] = a
             last_n = n
+    return answer_map
+
+
+def _parse_grid_list(ak_text):
+    """Same '<num>. (<ans>)' matching as inline_list, but WITHOUT the
+    strict "next number must be previous+1" gate. Needed for answer-key
+    pages laid out as several side-by-side columns per row (e.g. AAKASH:
+    "1.  (1)      24.  (2)" on one line, "2.  (2)      25.  (4)" on the
+    next ...), where plain text extraction interleaves the columns
+    row-major and inline_list's adjacency check would reject every
+    second-column entry as noise. First match seen for a given number
+    wins (later duplicate/garbled hits are ignored)."""
+    answer_map = {}
+    for m in _INLINE_RE.finditer(ak_text):
+        n, a = int(m.group(1)), int(m.group(2))
+        if n not in answer_map:
+            answer_map[n] = a
     return answer_map
 
 
