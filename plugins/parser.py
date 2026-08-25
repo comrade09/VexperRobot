@@ -20,6 +20,23 @@ Two content sources, selected per page automatically:
 A "coaching profile" (see coaching_profiles.py) supplies the regexes,
 subject-header set, and answer-key heading/parsing mode, so the same
 engine supports multiple coaching brands' PDF layouts.
+
+Image handling notes:
+  - Any raster figure/diagram is captured by taking a live screenshot of
+    that block's bounding box directly from the rendered page, rather
+    than extracting the raw embedded image stream. This sidesteps a
+    whole class of rendering bugs (CMYK-encoded JPEGs, transparent
+    backgrounds compositing to black, odd color spaces) because the
+    screenshot is always a clean, correctly-colored RGB render of
+    whatever is actually visible on the page.
+  - Some coaching PDFs set formulas (fractions, roots, special symbols)
+    with math fonts whose glyphs don't map to real Unicode text. When
+    that happens, PyMuPDF's text extraction returns garbled characters
+    (private-use-area codepoints / replacement chars) instead of the
+    formula. Such text blocks are detected and, instead of showing the
+    garbled text, are captured as an image screenshot of that block's
+    bounding box too -- so unparseable formulas render correctly as a
+    picture instead of gibberish or a blank/black gap.
 """
 import re
 import io
@@ -36,26 +53,62 @@ def _esc(text):
             .replace(">", "&gt;"))
 
 
+# ---------------------------------------------------------------------------
+# Garbled-text detection: math-font glyphs that don't decode to real text
+# show up as private-use-area codepoints (U+E000-U+F8FF) or the Unicode
+# replacement character (U+FFFD). If more than a small fraction of a text
+# block's characters fall in that range, treat the block as unparseable
+# and render it as an image instead.
+# ---------------------------------------------------------------------------
+_GARBLED_RE = re.compile(r"[\uE000-\uF8FF\uFFFD]")
+_GARBLED_RATIO_THRESHOLD = 0.15
+_GARBLED_MIN_HITS = 2  # ignore a single stray glyph (e.g. one bullet/symbol)
+
+
+def _looks_garbled(txt):
+    if not txt:
+        return False
+    hits = len(_GARBLED_RE.findall(txt))
+    if hits < _GARBLED_MIN_HITS:
+        return False
+    return (hits / max(len(txt), 1)) > _GARBLED_RATIO_THRESHOLD
+
+
+# ---------------------------------------------------------------------------
+# Rendering embedded/garbled content as a clean screenshot of the page
+# region, instead of trusting raw extracted image bytes or broken text.
+# ---------------------------------------------------------------------------
+def _render_bbox(page, bbox, zoom=2.0, pad=2):
+    """Render the given bbox (page-space rect) as a PNG screenshot of the
+    live page. Always produces a clean, correctly-colored RGB image on a
+    white background -- no CMYK/alpha/color-space issues, since this is
+    a fresh render rather than extracted raw image bytes."""
+    rect = fitz.Rect(bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad)
+    rect = rect & page.rect
+    if rect.is_empty or rect.width <= 0 or rect.height <= 0:
+        rect = page.rect
+    mat = fitz.Matrix(zoom, zoom)
+    pix = page.get_pixmap(matrix=mat, clip=rect)
+    return "png", pix.tobytes("png")
+
+
 def _normalize_image(ext, raw):
-    """Normalize every embedded image to a browser-safe RGB PNG.
-    Two separate problems handled here:
-    1. CMYK-encoded JPEGs (common in print-production PDFs) render dark/
-       inverted in browsers, which only decode standard YCbCr JPEGs.
-    2. Diagrams exported with a transparent background render as solid
-       black if the alpha channel is simply dropped -- transparent pixels
-       must be composited onto white, not discarded.
-    """
+    """Fallback normalizer for image bytes that didn't come from a live
+    page render (e.g. OCR-path crops that already went through
+    ocrmod.crop_region, or any other raw bytes handed in directly).
+    Forces CMYK/odd color spaces to RGB and composites any transparency
+    onto white instead of letting it collapse to black."""
     try:
         pix = fitz.Pixmap(raw)
         if pix.colorspace is None or pix.colorspace.n not in (1, 3):
-            pix = fitz.Pixmap(fitz.csRGB, pix)  # force CMYK/other -> RGB
+            pix = fitz.Pixmap(fitz.csRGB, pix)
         png_bytes = pix.tobytes("png")
 
         img = Image.open(io.BytesIO(png_bytes))
         if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
             img = img.convert("RGBA")
             bg = Image.new("RGB", img.size, (255, 255, 255))
-            bg.paste(img, mask=img.split()[-1])  # alpha channel as mask
+            bg.paste(img, mask=img.split()[-1])
             img = bg
         else:
             img = img.convert("RGB")
@@ -64,12 +117,10 @@ def _normalize_image(ext, raw):
         img.save(buf, format="PNG")
         return "png", buf.getvalue()
     except Exception:
-        # fall back to the original bytes if normalization fails for any reason
         return ext, raw
 
 
 def _img_tag(ext, raw):
-    ext, raw = _normalize_image(ext, raw)
     b64 = base64.b64encode(raw).decode("ascii")
     return f'<img class="qimg" src="data:image/{ext};base64,{b64}">'
 
@@ -187,12 +238,25 @@ def parse_pdf(pdf_path, profile_id="generic"):
                     if cur_subject is None:
                         continue  # header/junk before the first subject
 
+                    # Formula rendered with a math font whose glyphs don't
+                    # decode to real text -> screenshot this block instead
+                    # of emitting garbled characters.
+                    if _looks_garbled(txt):
+                        if cur_slot is not None:
+                            ext, raw = _render_bbox(page, b["bbox"])
+                            cur_slot.append(("image", (ext, raw)))
+                        continue
+
                     m = question_re.match(txt)
                     if m and m.group(1).isdigit() and int(m.group(1)) == expected_next_q():
                         new_question(int(m.group(1)))
                         rest = m.group(2).strip() if m.lastindex and m.lastindex >= 2 else ""
                         if rest:
-                            cur_slot.append(("text", rest))
+                            if _looks_garbled(rest):
+                                ext, raw = _render_bbox(page, b["bbox"])
+                                cur_slot.append(("image", (ext, raw)))
+                            else:
+                                cur_slot.append(("text", rest))
                         continue
 
                     if cur_question is not None:
@@ -203,19 +267,23 @@ def parse_pdf(pdf_path, profile_id="generic"):
                                 new_option(n)
                                 rest = mo.group(2).strip() if mo.lastindex and mo.lastindex >= 2 else ""
                                 if rest:
-                                    cur_slot.append(("text", rest))
+                                    if _looks_garbled(rest):
+                                        ext, raw = _render_bbox(page, b["bbox"])
+                                        cur_slot.append(("image", (ext, raw)))
+                                    else:
+                                        cur_slot.append(("text", rest))
                                 continue
 
                     if cur_slot is not None:
                         cur_slot.append(("text", txt))
 
-                else:  # image block
+                else:  # image block -> screenshot its bbox from the live
+                    # page instead of trusting the raw embedded stream
+                    # (avoids CMYK/alpha color issues entirely).
                     if cur_slot is None:
                         continue
-                    ext = b.get("ext", "png")
-                    raw = b.get("image")
-                    if raw:
-                        cur_slot.append(("image", (ext, raw)))
+                    ext, raw = _render_bbox(page, b["bbox"])
+                    cur_slot.append(("image", (ext, raw)))
 
         else:
             markers = ocr_markers.get(pno, [])
