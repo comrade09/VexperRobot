@@ -49,6 +49,19 @@ PROFILES = {
         "answer_key_modes": ["qa_table", "inline_list"],
         "solutions_heading": "SOLUTION",
     },
+    # PLACEHOLDER: currently identical to "generic" so the button works
+    # immediately. Once an Akash sample PDF is sent, tune question_re/
+    # option_re/answer_key_heading/answer_key_modes/solutions_heading to
+    # match its actual layout (same as was done for "allen").
+    "akash": {
+        "label": "AKASH",
+        "subject_names": _DEFAULT_SUBJECTS,
+        "question_re": re.compile(r"^(\d{1,3})[\)\.]\s?(.*)$", re.DOTALL),
+        "option_re": re.compile(r"^\(?([1-4])\)[\.\)]?\s?(.*)$", re.DOTALL),
+        "answer_key_heading": "ANSWER KEY",
+        "answer_key_modes": ["qa_table", "inline_list"],
+        "solutions_heading": "SOLUTION",
+    },
     # Add new coachings here once you've sent a sample PDF and it's been
     # tuned, e.g.:
     # "resonance": {
@@ -71,5 +84,7 @@ def get_profile(profile_id):
 
 def list_profiles():
     """Returns [(id, label), ...] in a stable, deliberate order."""
-    order = ["allen"] + sorted(p for p in PROFILES if p not in ("allen", "generic")) + ["generic"]
+    order = ["allen", "akash"] + sorted(
+        p for p in PROFILES if p not in ("allen", "akash", "generic")
+    ) + ["generic"]
     return [(pid, PROFILES[pid]["label"]) for pid in order if pid in PROFILES]
