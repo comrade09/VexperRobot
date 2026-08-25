@@ -1,0 +1,185 @@
+import os
+import re
+import time
+import traceback
+from pathlib import Path
+
+from pyrogram import filters
+from pyrogram.enums import ParseMode
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+
+from bot import Bot
+from coaching_profiles import list_profiles, get_profile
+from parser import parse_pdf
+from html_gen import render_cbt_html
+
+# ---------------------------------------------------------------------------
+# PDF -> CBT plugin
+#
+# /cbt (or a "PDF to CBT" button wired to callback_data "cbt_menu" from your
+# main /help menu, same way "help_six" opens the six() educator menu below)
+# shows a coaching picker; once picked, the next PDF the user sends is
+# parsed with that coaching's profile and turned into a self-contained CBT
+# HTML file (timer, palette, marking scheme, scorecard) sent back to them.
+#
+# Group numbers 270/271 are placeholders below the "six" example's group=260
+# -- change them if your bot already uses those groups elsewhere.
+# ---------------------------------------------------------------------------
+
+WORKDIR = Path("./cbt_work")
+WORKDIR.mkdir(exist_ok=True)
+
+DEFAULT_MINUTES = 180
+MARK_CORRECT = 4
+MARK_WRONG = -1
+
+# chat_id -> selected coaching profile id, until changed or a PDF is processed
+pending_profile = {}
+
+
+def cbt_coaching_markup():
+    rows = [
+        [InlineKeyboardButton(label, callback_data=f"cbtcoach_{pid}")]
+        for pid, label in list_profiles()
+    ]
+    rows.append([InlineKeyboardButton("Back", callback_data="help_cb")])
+    return InlineKeyboardMarkup(rows)
+
+
+def safe_stem(name):
+    stem = Path(name).stem
+    stem = re.sub(r"[^A-Za-z0-9_\-]+", "_", stem).strip("_")
+    return stem or "test"
+
+
+@Bot.on_message(filters.command("cbt"), group=2630)
+async def cbt_cmd(client: Bot, message: Message):
+    pending_profile.pop(message.chat.id, None)
+    await message.reply_text(
+        text=''' Select your coaching ''',
+        reply_markup=cbt_coaching_markup(),
+    )
+
+
+@Bot.on_callback_query(group=1727)
+async def cbt_callbacks(client: Bot, query: CallbackQuery):
+    data = query.data
+
+    if data == "cbt_menu":
+        pending_profile.pop(query.message.chat.id, None)
+        await query.message.edit_text(
+            text=''' Select your coaching ''',
+            reply_markup=cbt_coaching_markup(),
+        )
+
+    elif data.startswith("cbtcoach_"):
+        pid = data.split("cbtcoach_", 1)[1]
+        pending_profile[query.message.chat.id] = pid
+        label = get_profile(pid)["label"]
+        await query.answer(f"Selected: {label}")
+        await query.message.edit_text(
+            text=f''' ✅ Coaching set to <b>{label}</b>.
+
+Now send me the PDF as a document. Use /cbt any time to change this. ''',
+            disable_web_page_preview=True,
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Change coaching", callback_data="cbt_menu")]]
+            ),
+        )
+
+
+# NOTE: if your bot already has another `filters.document` handler (e.g. one
+# that auto-forwards uploads into a storage channel for the file-store
+# feature), both handlers will fire on the same PDF unless one of them raises
+# pyrogram.StopPropagation() -- decide whether you want the PDF to also go
+# through your normal file-store flow, and add that if not.
+@Bot.on_message(filters.document, group=1782)
+async def cbt_handle_pdf(client: Bot, message: Message):
+    doc = message.document
+    if not (doc.file_name or "").lower().endswith(".pdf"):
+        return
+
+    chat_id = message.chat.id
+    profile_id = pending_profile.get(chat_id)
+    if not profile_id:
+        await message.reply_text(
+            text=''' Pick which coaching this PDF is from first ''',
+            reply_markup=cbt_coaching_markup(),
+        )
+        return
+
+    profile_label = get_profile(profile_id)["label"]
+    status = await message.reply_text(
+        f"📥 Downloading PDF… (profile: {profile_label})", quote=True
+    )
+    t0 = time.time()
+    try:
+        pdf_path = await message.download(file_name=str(WORKDIR / doc.file_name))
+    except Exception as e:
+        await status.edit_text(f"Couldn't download that file: {e}")
+        return
+
+    try:
+        await status.edit_text(
+            "🔎 Reading questions, options, figures and the answer key…\n"
+            "(scanned pages, if any, are OCR'd automatically — this can take a bit longer)"
+        )
+        data = parse_pdf(pdf_path, profile_id)
+
+        if data["total"] == 0:
+            await status.edit_text(
+                f"I couldn't find any numbered questions in this PDF using the "
+                f"<b>{profile_label}</b> profile. Try /cbt and pick a different one, "
+                "or send this sample here so a profile can be tuned for it."
+            )
+            return
+
+        unmapped = sum(
+            1 for s in data["subjects"] for q in s["questions"] if q.get("answer") is None
+        )
+
+        await status.edit_text(
+            f"🛠 Building the CBT ({data['total']} questions across "
+            f"{len(data['subjects'])} subject(s))…"
+        )
+        html_out = render_cbt_html(
+            data,
+            title=safe_stem(doc.file_name).replace("_", " "),
+            default_minutes=DEFAULT_MINUTES,
+            mark_correct=MARK_CORRECT,
+            mark_wrong=MARK_WRONG,
+        )
+
+        out_path = WORKDIR / f"{safe_stem(doc.file_name)}_CBT.html"
+        out_path.write_text(html_out, encoding="utf-8")
+
+        subj_line = ", ".join(
+            f"{s['name']}: {len(s['questions'])}" for s in data["subjects"]
+        )
+        caption = (
+            f"✅ CBT ready ({profile_label}) — {data['total']} questions\n{subj_line}\n"
+            f"Marking: +{MARK_CORRECT} / {MARK_WRONG}, default {DEFAULT_MINUTES} min "
+            "(editable at start)\n\n"
+            "Download the HTML file and open it in any browser (phone or laptop) "
+            "to attempt it in CBT mode."
+        )
+        if unmapped:
+            caption += (
+                f"\n\n⚠️ {unmapped} question(s) had no matching entry in the "
+                "answer key — they'll show as unscored (0) in the result."
+            )
+
+        await message.reply_document(str(out_path), caption=caption, quote=True)
+        await status.delete()
+
+    except Exception:
+        err = traceback.format_exc(limit=3)
+        await status.edit_text(
+            f"Something went wrong while processing this PDF:\n<code>{err}</code>"
+        )
+    finally:
+        print(f"[pdf2cbt] {doc.file_name} ({profile_id}): {time.time()-t0:.1f}s")
+        try:
+            os.remove(pdf_path)
+        except OSError:
+            pass
