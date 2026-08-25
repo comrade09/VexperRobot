@@ -531,12 +531,12 @@ function submitTest() {{
 # ============================================================
 # BOT HANDLERS & PROGRESS
 # ============================================================
-@Client.on_message(filters.command("cbtai") & filters.private)
+@Client.on_message(filters.command("cbtai") & filters.private,group=66446)
 async def start_cbt_process(client, message):
     USER_STATES[message.from_user.id] = {"state": "WAITING_FOR_Q_PDF"}
     await message.reply_text("📚 **CBT AI Converter**\n\nPlease upload the **Question PDF** (any coaching material).")
 
-@Client.on_message(filters.document & filters.private)
+@Client.on_message(filters.document & filters.private,group=64532)
 async def handle_document(client, message):
     user_id = message.from_user.id
     state_info = USER_STATES.get(user_id)
@@ -570,7 +570,7 @@ async def handle_document(client, message):
         await msg.edit_text("✅ Answer Key saved.")
         await start_conversion(client, message.chat.id, user_id)
 
-@Client.on_callback_query(filters.regex(r"^cbt_"))
+@Client.on_callback_query(filters.regex(r"^cbt_"),group=4223)
 async def handle_callback(client, callback_query):
     user_id = callback_query.from_user.id
     data = callback_query.data
