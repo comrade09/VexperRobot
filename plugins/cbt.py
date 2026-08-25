@@ -215,8 +215,7 @@ async def _process_and_send(message, status, profile_id, profile_label,
     two_pdf flows. Any exception is caught and reported on `status`."""
     try:
         await status.edit_text(
-            "🔎 Reading questions, options, figures and the answer key…\n"
-            "(scanned pages, if any, are OCR'd automatically — this can take a bit longer)"
+            "🔎 Reading questions, options, figures and the answer key…"
         )
         data = parse_pdf(pdf_path, profile_id, second_pdf_path=second_pdf_path)
 
@@ -262,13 +261,30 @@ async def _process_and_send(message, status, profile_id, profile_label,
                 f"\n\n⚠️ {unmapped} question(s) had no matching entry in the "
                 "answer key — they'll show as unscored (0) in the result."
             )
+        if data.get("scanned_pages"):
+            caption += (
+                f"\n\n⚠️ {data['scanned_pages']} page(s) looked scanned/image-only "
+                "(no extractable text) and were skipped — OCR is disabled, so any "
+                "questions on those pages won't be in this CBT."
+            )
 
         await message.reply_document(str(out_path), caption=caption, quote=True)
         await status.delete()
 
     except Exception:
         err = traceback.format_exc(limit=3)
-        await status.edit_text(
-            f"Something went wrong while processing this PDF:\n<code>{err}</code>"
-        )
-                                   
+        # Raw traceback text almost always contains '<' / '>' / '&'
+        # (file paths, "<string>", object reprs, etc.) which breaks
+        # Telegram's HTML entity parser if sent unescaped inside <code>.
+        # That parse failure raises its own exception which was
+        # previously uncaught here -- silently killing the whole flow
+        # with nothing shown to the user and nothing but a second
+        # "Unhandled exception" in the logs. Escape it, and never let
+        # reporting the error be able to raise itself.
+        safe_err = (err.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+        try:
+            await status.edit_text(
+                f"Something went wrong while processing this PDF:\n<code>{safe_err}</code>"
+            )
+        except Exception:
+            print(f"[pdf2cbt] failed to report error to chat:\n{err}")
