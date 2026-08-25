@@ -24,9 +24,8 @@ engine supports multiple coaching brands' PDF layouts.
 import re
 import base64
 import pymupdf as fitz
-
-from coaching_profiles import get_profile
-import ocr as ocrmod
+from plugins.coaching_profiles import get_profile
+import plugins.ocr as ocrmod
 
 
 def _esc(text):
