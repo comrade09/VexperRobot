@@ -104,6 +104,22 @@ PAGE_TEMPLATE = r"""<!DOCTYPE html>
   .tag.wrong{background:var(--red);}
   .tag.skipped{background:var(--grey);}
   .hide{display:none !important;}
+
+  /* ===== Join-channel popup ===== */
+  .jc-popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;
+      align-items:center;justify-content:center;z-index:99999;animation:jcFadeIn .2s ease;}
+  @keyframes jcFadeIn{from{opacity:0;}to{opacity:1;}}
+  .jc-popup-box{background:#fff;border-radius:14px;padding:28px 24px 22px;width:90%;max-width:320px;
+      text-align:center;position:relative;box-shadow:0 12px 40px rgba(0,0,0,.25);font-family:inherit;}
+  .jc-popup-close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:22px;
+      line-height:1;cursor:pointer;color:#888;padding:4px;}
+  .jc-popup-close:hover{color:#333;}
+  .jc-popup-icon{font-size:32px;margin-bottom:6px;}
+  .jc-popup-title{margin:0 0 6px;font-size:17px;font-weight:700;color:var(--nav);}
+  .jc-popup-text{margin:0 0 16px;font-size:13.5px;color:#555;line-height:1.4;}
+  .jc-popup-btn{display:inline-block;background:#229ED9;color:#fff !important;text-decoration:none;
+      font-weight:600;font-size:14px;padding:10px 22px;border-radius:8px;transition:background .15s ease;}
+  .jc-popup-btn:hover{background:#1b87bd;}
 </style>
 </head>
 <body>
@@ -160,6 +176,17 @@ PAGE_TEMPLATE = r"""<!DOCTYPE html>
 </div>
 
 <div id="resultScreen" class="hide"></div>
+
+<!-- ===== Join-channel popup ===== -->
+<div id="joinChannelPopup" class="jc-popup-overlay" style="display:none;">
+  <div class="jc-popup-box">
+    <button type="button" class="jc-popup-close" onclick="jcClosePopup()" aria-label="Close">&times;</button>
+    <div class="jc-popup-icon">📢</div>
+    <h3 class="jc-popup-title">Join our Telegram Channel</h3>
+    <p class="jc-popup-text">Get more free tests, updates and study resources.</p>
+    <a href="https://t.me/a3xarva" target="_blank" rel="noopener noreferrer" class="jc-popup-btn">Join Channel</a>
+  </div>
+</div>
 
 <script id="testData" type="application/json">__DATA_JSON__</script>
 <script>
@@ -374,6 +401,18 @@ function showResults(auto){
   resultBox.classList.remove('hide');
   window.scrollTo({top:0,behavior:'smooth'});
 }
+
+// ===== Join-channel popup: shows shortly after open, then every 5 min =====
+function jcShowPopup(){
+  const el = document.getElementById('joinChannelPopup');
+  if(el) el.style.display = 'flex';
+}
+function jcClosePopup(){
+  const el = document.getElementById('joinChannelPopup');
+  if(el) el.style.display = 'none';
+}
+setTimeout(jcShowPopup, 1200);
+setInterval(jcShowPopup, 5 * 60 * 1000);
 </script>
 </body>
 </html>
@@ -396,7 +435,7 @@ def render_cbt_html(data, title="Mock Test", default_minutes=180,
 
 if __name__ == "__main__":
     import sys
-    from parser import parse_pdf
+    from plugins.parser import parse_pdf
     data = parse_pdf(sys.argv[1])
     out = render_cbt_html(data, title="ALLEN Mock Test")
     with open(sys.argv[2], "w", encoding="utf-8") as f:
