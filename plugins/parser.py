@@ -22,8 +22,11 @@ subject-header set, and answer-key heading/parsing mode, so the same
 engine supports multiple coaching brands' PDF layouts.
 """
 import re
+import io
 import base64
 import pymupdf as fitz
+from PIL import Image
+
 from plugins.coaching_profiles import get_profile
 import plugins.ocr as ocrmod
 
@@ -33,7 +36,40 @@ def _esc(text):
             .replace(">", "&gt;"))
 
 
+def _normalize_image(ext, raw):
+    """Normalize every embedded image to a browser-safe RGB PNG.
+    Two separate problems handled here:
+    1. CMYK-encoded JPEGs (common in print-production PDFs) render dark/
+       inverted in browsers, which only decode standard YCbCr JPEGs.
+    2. Diagrams exported with a transparent background render as solid
+       black if the alpha channel is simply dropped -- transparent pixels
+       must be composited onto white, not discarded.
+    """
+    try:
+        pix = fitz.Pixmap(raw)
+        if pix.colorspace is None or pix.colorspace.n not in (1, 3):
+            pix = fitz.Pixmap(fitz.csRGB, pix)  # force CMYK/other -> RGB
+        png_bytes = pix.tobytes("png")
+
+        img = Image.open(io.BytesIO(png_bytes))
+        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+            img = img.convert("RGBA")
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            bg.paste(img, mask=img.split()[-1])  # alpha channel as mask
+            img = bg
+        else:
+            img = img.convert("RGB")
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return "png", buf.getvalue()
+    except Exception:
+        # fall back to the original bytes if normalization fails for any reason
+        return ext, raw
+
+
 def _img_tag(ext, raw):
+    ext, raw = _normalize_image(ext, raw)
     b64 = base64.b64encode(raw).decode("ascii")
     return f'<img class="qimg" src="data:image/{ext};base64,{b64}">'
 
