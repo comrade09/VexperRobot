@@ -24,3 +24,6 @@ openai
 selenium
 webdriver-manager
 Flask
+PyMuPDF
+pytesseract
+Pillow
