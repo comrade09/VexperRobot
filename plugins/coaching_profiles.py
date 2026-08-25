@@ -21,10 +21,32 @@ Fields:
                                            whole paper (ALLEN-style)
                           "inline_list" -> "1. (3)  2. (1)  3. (4) ..." runs
                                            of "<num>. (<ans>)" anywhere in
-                                           the section
+                                           the section, REQUIRING strictly
+                                           increasing numbers (rejects
+                                           noise, but breaks on multi-
+                                           column row-major grids)
+                          "grid_list"   -> same "<num>. (<ans>)" matching
+                                           as inline_list but WITHOUT the
+                                           increasing-order requirement --
+                                           for answer keys laid out in
+                                           several side-by-side columns
+                                           per row (AAKASH-style)
   solutions_heading  - optional heading marking the end of the answer-key
                         section (so solution text below isn't misread as
                         more answers)
+  two_pdf             - optional, default False. Set True when this
+                        coaching ships the question paper and the
+                        answer-key/solutions as two SEPARATE PDFs (e.g.
+                        AAKASH) rather than one combined file. When set,
+                        cbt.py collects both PDFs before processing and
+                        hands the second one to parser.parse_pdf() as
+                        second_pdf_path; the answer-key section is then
+                        taken to start exactly at the question paper's
+                        last page instead of being located via
+                        answer_key_heading (which may not exist as
+                        literal text on such profiles). answer_key_heading
+                        is unused for two_pdf profiles but is still kept
+                        as a dict key for uniformity -- set it to None.
 """
 import re
 
@@ -49,18 +71,29 @@ PROFILES = {
         "answer_key_modes": ["qa_table", "inline_list"],
         "solutions_heading": "SOLUTION",
     },
-    # PLACEHOLDER: currently identical to "generic" so the button works
-    # immediately. Once an Akash sample PDF is sent, tune question_re/
-    # option_re/answer_key_heading/answer_key_modes/solutions_heading to
-    # match its actual layout (same as was done for "allen").
-    "akash": {
-        "label": "AKASH",
+    "aakash": {
+        # AAKASH (AIATS) papers: question numbers are "1.", "2." ... (a
+        # dot, not Allen's paren) and options are "(1)".."(4)" same as
+        # Allen. The question paper and the answer-key/"Hints and
+        # Solutions" booklet are two separate PDF files, and the answer
+        # grid page has no literal "ANSWER KEY" heading text -- it just
+        # starts straight into a subject box ("PHYSICS") followed by
+        # lines like "1.  (1)", so answer_key_heading can't be used to
+        # locate it. two_pdf=True tells cbt.py to collect both files and
+        # parser.py to take the boundary as the question-paper's page
+        # count instead of searching for a heading.
+        "label": "Aakash",
         "subject_names": _DEFAULT_SUBJECTS,
-        "question_re": re.compile(r"^(\d{1,3})[\)\.]\s?(.*)$", re.DOTALL),
-        "option_re": re.compile(r"^\(?([1-4])\)[\.\)]?\s?(.*)$", re.DOTALL),
-        "answer_key_heading": "ANSWER KEY",
-        "answer_key_modes": ["qa_table", "inline_list"],
-        "solutions_heading": "SOLUTION",
+        "question_re": re.compile(r"^(\d{1,3})\.\s?(.*)$", re.DOTALL),
+        "option_re": re.compile(r"^\((\d)\)\s?(.*)$", re.DOTALL),
+        "answer_key_heading": None,
+        # inline_list tried first (works if the grid extracts single-file);
+        # grid_list is the fallback for the row-major two-column layout
+        # ("1. (1)   24. (2)" on one line) -- whichever gets better
+        # coverage wins automatically (see parse_pdf's mode loop).
+        "answer_key_modes": ["inline_list", "grid_list"],
+        "solutions_heading": "Hints and Solutions",
+        "two_pdf": True,
     },
     # Add new coachings here once you've sent a sample PDF and it's been
     # tuned, e.g.:
@@ -84,7 +117,5 @@ def get_profile(profile_id):
 
 def list_profiles():
     """Returns [(id, label), ...] in a stable, deliberate order."""
-    order = ["allen", "akash"] + sorted(
-        p for p in PROFILES if p not in ("allen", "akash", "generic")
-    ) + ["generic"]
+    order = ["allen", "aakash"] + sorted(p for p in PROFILES if p not in ("allen", "aakash", "generic")) + ["generic"]
     return [(pid, PROFILES[pid]["label"]) for pid in order if pid in PROFILES]
