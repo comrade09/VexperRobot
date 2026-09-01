@@ -14,6 +14,22 @@ async def save_video_code(question_code: str, message_id: int):
 
 async def get_video_message_id(question_code: str):
     data = video_collection.find_one({'_id': question_code.upper()})
-    if data:
-        return data.get('message_id')
-    return None
+    return data.get('message_id') if data else None
+
+async def count_total_videos() -> int:
+    return video_collection.count_documents({})
+
+async def delete_single_video(question_code: str) -> bool:
+    result = video_collection.delete_one({'_id': question_code.upper()})
+    return result.deleted_count > 0
+
+async def delete_all_video_records() -> int:
+    result = video_collection.delete_many({})
+    return result.deleted_count
+
+async def get_recent_codes(limit: int = 5):
+    cursor = video_collection.find().sort('_id', -1).limit(limit)
+    return [doc['_id'] for doc in cursor]
+
+async def get_all_records():
+    return list(video_collection.find({}))
