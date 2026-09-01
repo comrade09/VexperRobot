@@ -6,7 +6,7 @@ from database.videos import save_video_code
 DUMP_CHANNEL_ID = -1003946902565
 
 # Changed to group=-1 so it runs BEFORE CodeXBotz's default plugins intercept it
-@Client.on_message(filters.chat(DUMP_CHANNEL_ID) & (filters.video | filters.document), group=-1)
+@Client.on_message(filters.chat(DUMP_CHANNEL_ID) & (filters.video | filters.document))
 async def auto_save_channel_video(bot: Client, message: Message):
     
     # 1. First debug print - proves the bot actually saw the video
