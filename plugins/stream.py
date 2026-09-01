@@ -7,8 +7,8 @@ import re
 from aiohttp import web
 
 # Must match the SECRET_KEY in search.py and DUMP_CHANNEL_ID in save_video.py
-SECRET_KEY = b"YourSuperSecretKey123"
-DUMP_CHANNEL_ID = -1001234567890 
+SECRET_KEY = b"84b6f10c7931c890e0e1a967f6515f40192ea62f25608d0f7a75932598be6f2d"
+DUMP_CHANNEL_ID = -1003946902565
 
 routes = web.RouteTableDef()
 
