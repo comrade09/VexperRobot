@@ -3,16 +3,14 @@ from config import DB_URI, DB_NAME
 
 dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
-video_collection = database['videos']
+
+# ✅ FIX: Changed 'videos' to 'stream_videos' so it doesn't clash with CodeXBotz!
+video_collection = database['stream_videos']
 
 async def save_video_code(question_code: str, message_id: int):
-    # Added 'code' to $set to satisfy your old MongoDB database indexes
     video_collection.update_one(
         {'_id': question_code.upper()},
-        {'$set': {
-            'message_id': message_id,
-            'code': question_code.upper() 
-        }},
+        {'$set': {'message_id': message_id}},
         upsert=True
     )
 
