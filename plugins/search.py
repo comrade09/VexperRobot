@@ -9,8 +9,8 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from database.videos import get_video_message_id
 
 STREAM_DOMAIN = "https://stable-meggy-coderkadin-f41f2942.koyeb.app"
-SECRET_KEY = b"YourSuperSecretKey123"
-
+SECRET_KEY = b"84b6f10c7931c890e0e1a967f6515f40192ea62f25608d0f7a75932598be6f2d"
+DUMP_CHANNEL_ID = -1003946902565
 def generate_expiring_link(message_id: int) -> str:
     # 15 minutes = 900 seconds
     expire_time = int(time.time()) + 900 
@@ -22,7 +22,7 @@ def generate_expiring_link(message_id: int) -> str:
     signature = hmac.new(SECRET_KEY, encoded_payload.encode('utf-8'), hashlib.sha256).hexdigest()
     return f"{STREAM_DOMAIN}/watch?data={encoded_payload}&sig={signature}"
 
-@Client.on_message(filters.command(["search"]) & filters.private)
+@Client.on_message(filters.command(["search"]) & filters.private,group=6356)
 async def search_question_code(bot: Client, message: Message):
     if len(message.command) < 2:
         await message.reply_text("⚠️ **Format:** `/search CC0248`")
