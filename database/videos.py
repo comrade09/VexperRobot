@@ -6,9 +6,13 @@ database = dbclient[DB_NAME]
 video_collection = database['videos']
 
 async def save_video_code(question_code: str, message_id: int):
+    # Added 'code' to $set to satisfy your old MongoDB database indexes
     video_collection.update_one(
         {'_id': question_code.upper()},
-        {'$set': {'message_id': message_id}},
+        {'$set': {
+            'message_id': message_id,
+            'code': question_code.upper() 
+        }},
         upsert=True
     )
 
