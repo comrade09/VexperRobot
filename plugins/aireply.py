@@ -70,7 +70,7 @@ async def fetch_gemini_response(user_text: str) -> str:
         return "All Gemini models are overloaded right now."
 
 async def fetch_groq_response(user_text: str) -> str:
-    """Makes an async HTTP request to the Groq API (Llama 3)."""
+    """Makes an async HTTP request to the Groq API (Llama 3.1)."""
     if not GROQ_API_KEY:
         return "Groq API Key is missing in environment variables."
 
@@ -82,7 +82,7 @@ async def fetch_groq_response(user_text: str) -> str:
     active_prompt = UNHINGED_PROMPT if UNHINGED_MODE_ENABLED else NORMAL_PROMPT
     
     payload = {
-        "model": "llama3-8b-8192", # Blazing fast Llama 3 model
+        "model": "llama-3.1-8b-instant", # Upgraded, currently supported high-speed model
         "messages": [
             {"role": "system", "content": active_prompt},
             {"role": "user", "content": user_text}
