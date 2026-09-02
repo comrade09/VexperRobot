@@ -13,6 +13,7 @@ from logging.handlers import RotatingFileHandler
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 
 GEMINI_API_KEY = os.environ.get("GEMINI", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY","")
 
 BOT_USERNM = os.environ.get("BOT_USERNM", "")
 
