@@ -52,12 +52,11 @@ async def fetch_gemini_response(user_text: str) -> str:
     
     # 3.7 is entirely removed. The bot cascades through all other available Flash models until one answers.
     models_to_try = [
-        "gemini-3.5-flash",
-        "gemini-3.1-flash-lite",
-        "gemini-2.5-flash",
-        "gemini-1.5-flash"
+        "gemini-3.1-flash-lite", # Ultra-fast, highest rate limits (Best for group chats)
+        "gemini-1.5-flash",      # Extremely stable, older model with massive capacity
+        "gemini-2.5-flash",      # Standard backup
+        "gemini-3.5-flash"       # Moved to last resort due to strict rate limits
     ]
-    
     async with aiohttp.ClientSession() as session:
         for model in models_to_try:
             api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI}"
